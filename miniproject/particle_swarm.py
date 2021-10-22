@@ -7,34 +7,37 @@ def Rosenbrock(x):
 
 def particleswarm(no_particles,no_iterations,lowerbound,upperbound,cogco,socco,w,function):
     
-    particles = list(range(1,no_particles))
-    pos = np.array()
-    for dimension in lowerbound:
-        pos[0,dimension] = random.randrange(lowerbound[dimension],upperbound[dimension])
-    velocity = []
-    localbest = []
-    globalbest = function(pos[0])
-
+    dimensions = list(range(1,len(lowerbound)+1))
+    particles = list(range(1,no_particles+1))
+    pos = np.zeros((len(particles),len(dimensions)))
+    for dimension in dimensions:
+        pos[0,dimension-1] = random.randrange(lowerbound[dimension-1],upperbound[dimension-1])
+    velocity = np.zeros((len(particles),len(dimensions)))
+    localbest = np.zeros((len(particles),len(dimensions)))
+    globalbest = pos[0,:]
 
     for particle in particles:
-        for dimension in lowerbound:
-            pos[particle,dimension] = random.randrange(lowerbound[dimension],upperbound[dimension])
-            velocity[particle,dimension] = random.randrange(-abs(upperbound[dimension]-lowerbound[dimension]),abs(upperbound[dimension]-lowerbound[dimension]))
+        for dimension in dimensions:
+            pos[particle-1,dimension-1] = random.randrange(lowerbound[dimension-1],upperbound[dimension-1])
+            velocity[particle-1,dimension-1] = random.randrange(-abs(upperbound[dimension-1]-lowerbound[dimension-1]),abs(upperbound[dimension-1]-lowerbound[dimension-1]))
 
-        localbest[particle] = pos[particle]
-        if function(localbest[particle]) < globalbest:
-            globalbest = localbest[particle]
+        localbest[particle-1] = pos[particle-1]
+
+        if function(localbest[particle-1,:]) < function(globalbest):
+            globalbest = localbest[particle-1,:]
         
     iterations = list(range(1,no_iterations))
     for iteration in iterations:
         for particle in particles:
-            for dimension in lowerbound:
+            for dimension in dimensions:
                 rp = random.randrange(0,1)
                 rg = random.randrange(0,1)
-                velocity[particle,dimension] = w*velocity[particle,dimension] + cogco*rp*(localbest[particle] - pos[particle]) + socco*rg*(globalbest - pos[particle])
-                pos[particle,dimension] += velocity[particle,dimension]
-                if function(pos[particle]) < function(localbest[particle]):
-                    localbest[particle] = pos[particle]
-                    if function(localbest[particle]) < globalbest:
-                        globalbest = localbest[particle]
-                        return globalbest
+                velocity[particle-1,dimension-1] = w*velocity[particle-1,dimension-1] + cogco*rp*(localbest[particle-1,dimension-1] - pos[particle-1,dimension-1]) + socco*rg*(globalbest[dimension-1] - pos[particle-1,dimension-1])
+                pos[particle-1,dimension-1] += velocity[particle-1,dimension-1]
+                if function(pos[particle-1]) < function(localbest[particle-1]):
+                    localbest[particle-1] = pos[particle-1]
+                    if function(localbest[particle-1]) < function(globalbest):
+                        globalbest = localbest[particle-1]
+                        print(function(globalbest))
+
+particleswarm(100,10,[-10,-10],[10,10],1,1,.5,Rosenbrock)
