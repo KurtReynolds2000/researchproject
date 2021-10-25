@@ -161,7 +161,7 @@ def artifical_bee(function,n_iter,bounds,n_bees,limit):
 
     time_start = time.time()
 
-    for i in range(n_iter):
+    while i <= n_iter:
 
         # Employer bee phase
         for j in range(n_food):
@@ -213,6 +213,7 @@ def artifical_bee(function,n_iter,bounds,n_bees,limit):
 
         timing.append(time.time() - time_start)
         object_track.append(best_eval)
+        i += 1
     
     return (best_eval,best_source,object_track, timing)
 
