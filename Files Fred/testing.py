@@ -1,9 +1,11 @@
 import numpy as np
-from Functions import Rosenbrock
+from numpy.random import default_rng
+import Functions as fun
+import Algorithms as alg
+function = fun.Rosenbrock
+bounds = np.asarray([[-10, 10]]*2)
 
-bounds = np.array([[1,2,3,4],[3,4,5,6]])
-store = np.array([2,3,4,5])
-ran = len(bounds)
+best, best_source, obj_track, timing = alg.firefly_alg(
+    function, bounds, 100, 300)
 
-array = np.array([bounds[i,0] <= store[i] <= bounds[i,1] for i in [0,1]])
-print(array.all())
+print(best, best_source)
