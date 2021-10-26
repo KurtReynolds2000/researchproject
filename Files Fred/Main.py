@@ -5,33 +5,47 @@ import matplotlib.pyplot as plt
 import Algorithms as alg
 import Functions as fun
 
-n = 600
-M = 300
+
+n = 500
+M = 400
 t_range = [1, 0.05]
-bounds = np.asarray([[-5, 5]]*50)
+bounds = np.asarray([[-5.12, 5.12]]*10)
 step = 0.5
-parameters = (0.4, 1, 0.5)
+parameters = (0.4, 1, 0.5)  # for rastringin
+# parameters = (0.5, 0.9, 0.5)
 error = 1e-5
-no_particles = 700
+no_particles = 1000
+function = fun.Rastringin
+dimension = len(bounds)
+np.set_printoptions(precision=4)
 
 
 [best_eval, best_val, obj_track, timing] = alg.sim_annealing(
-    fun.Rastringin, n, M, bounds, 1, t_range, step)
-print(best_val, best_eval)
+    function, n, M, bounds, 1, t_range, step)
+print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 plt.yscale('log')
 plt.xlabel("Time (s)")
 plt.ylabel("Objective Function")
 
 [best_eval, best_val, obj_track, timing] = alg.particle_swarm(
-    fun.Rastringin, 800, error, bounds, no_particles, parameters)
-print(best_val, best_eval)
+    function, 700, error, bounds, no_particles, parameters)
+print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.artifical_bee(
-    fun.Rastringin, 1200, bounds, 10, 160)
-print(best_val, best_eval)
+[best_eval, best_val, obj_track, timing] = alg.artificial_bee(
+    function, 900, bounds, 24, 1450)
+print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
-plt.legend(["Simulated Annealing", "Particle Swarm", "Artifical Bee Colony"])
+
+
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(
+    function, bounds, 900, 350)
+print("{:.5f}".format(best_eval), best_val)
+plt.plot(timing, obj_track)
+
+plt.legend(["Simulated Annealing", "Particle Swarm",
+           "Artificial Bee Colony", "Firefly Algorithm"])
+plt.title(f' Objective Function vs Time (s) for {dimension} Dimensions')
 plt.show()

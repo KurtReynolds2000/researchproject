@@ -114,7 +114,7 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
     return [group_eval, group_position, obj_track, timing]
 
 
-def artifical_bee(function, n_iter, bounds, n_bees, limit):
+def artificial_bee(function, n_iter, bounds, n_bees, limit):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -232,7 +232,7 @@ def artifical_bee(function, n_iter, bounds, n_bees, limit):
     return (best_eval, best_source, object_track, timing)
 
 
-def firefly_alg(function, bounds, n_iter, pop_size=400, alpha=1.0, betamin=1.0, gamma=0.01, seed=None):
+def firefly_alg(function, bounds, max_eval, pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01, seed=None):
     """
     This is a function which follows the firefly algorithm
     """
@@ -252,7 +252,7 @@ def firefly_alg(function, bounds, n_iter, pop_size=400, alpha=1.0, betamin=1.0, 
     search_range = ub - lb
     time_start = time.time()
 
-    while evaluations <= n_iter:
+    while evaluations <= max_eval:
         new_alpha *= 0.97
         for i in range(pop_size):
             for j in range(pop_size):
@@ -270,6 +270,6 @@ def firefly_alg(function, bounds, n_iter, pop_size=400, alpha=1.0, betamin=1.0, 
                     best_index = np.argmin(intensity)
                     best_source = fireflies[best_index]
                     obj_track.append(best)
-                    timing.append(time.time()-time.start)
+                    timing.append(time.time()-time_start)
 
     return (best, best_source, obj_track, timing)
