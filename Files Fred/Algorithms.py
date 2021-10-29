@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from math import inf, exp
+from math import e, inf, exp
 import math as mt
 
 
@@ -25,8 +25,7 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
     # Initialise variables
 
     temp = sum(t_range)/len(t_range)
-    best_val = bounds[:, 0] + \
-        np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
+    best_val = bounds[:, 0] + np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
     best_eval = function(best_val)
     curr_val, curr_eval = best_val, best_eval
     t_init, t_final = t_range[0], t_range[1]
@@ -76,8 +75,7 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
     timing = list()
 
     for particle in range(n_particles):
-        part_position[particle] = bounds[:, 0] + \
-            np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
+        part_position[particle] = bounds[:, 0] + np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
 
     part_bposition = part_position
     part_beval = np.array([float('inf') for _ in range(n_particles)])
@@ -100,8 +98,7 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
                 group_eval = eval_candidate
                 group_position = part_position[k]
 
-            part_velocity[k] = w * part_velocity[k] + c_1 * np.random.random() * (
-                part_bposition[k]-part_position[k]) + c_2 * np.random.random() * (group_position - part_position[k])
+            part_velocity[k] = w * part_velocity[k] + c_1 * np.random.random() * (part_bposition[k]-part_position[k]) + c_2 * np.random.random() * (group_position - part_position[k])
             part_position[k] += part_velocity[k]
 
         if sum(abs(group_eval - part_beval)) < error:
@@ -132,51 +129,42 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
 
     # Helper function for calculating pertubation
     def pertubation(source, n_food, n_iter, bounds):
-        store = np.zeros(len(bounds))
-
-        for k in range(len(bounds)):
-
-            index_food = np.random.choice([i for i in range(n_food) if i != j])
-            store[k] = source[n_iter, k] + \
-                np.random.uniform(-1, 1) * \
-                (source[index_food, k]-source[n_iter, k])
-            if store[k] > bounds[k, 1]:
-                store[k] = bounds[k, 1]
-            elif store[k] < bounds[k, 0]:
-                store[k] = bounds[k, 0]
+        index_food = int(np.random.uniform(0,n_food-1))
+        while index_food == n_iter:
+            index_food = int(np.random.uniform(0,n_food-1))
+        store = source[n_iter] + np.random.uniform(-1, 1) * (source[index_food]-source[n_iter])
+        store = np.clip(store, bounds[:,0], bounds[:,1])
 
         return store
 
     # Storing solutions
-    best_source = np.zeros(len(bounds))
+    best_source = np.empty(len(bounds))
     best_eval = float('inf')
     object_track = list()
     timing = list()
 
     # Initialising parameters
     n_food = mt.floor(n_bees / 2)
-    food_source = np.array([bounds[:, 0] + np.random.rand(len(bounds))
-                           * (bounds[:, 1] - bounds[:, 0]) for i in range(n_food)])
+    food_source = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for i in range(n_food)])
     food_eval = [function(food_source[i]) for i in range(n_food)]
-    food_fit = np.zeros(n_food)
-    counter = np.zeros(n_food)
+    food_fit = np.empty(n_food)
+    counter = np.empty(n_food)
 
-    trial_source = np.zeros(len(bounds))
+    trial_source = np.empty(len(bounds))
 
     # Calculating initial fitness
     for i in range(len(food_eval)):
-        food_fit[i] = 1/(1+food_eval[i]
-                         ) if food_eval[i] >= 0 else 1 + abs(food_eval[i])
+        food_fit[i] = 1/(1+food_eval[i]) if food_eval[i] >= 0 else 1 + abs(food_eval[i])
 
     time_start = time.time()
+    i = 0
 
     while i <= n_iter:
 
         # Employer bee phase
         for j in range(n_food):
             trial_store = pertubation(food_source, n_food, j, bounds)
-            trial_fit, trial_eval, trial_source = fitness(
-                trial_store, function)
+            trial_fit, trial_eval, trial_source = fitness(trial_store, function)
 
             if trial_fit > food_fit[j]:
                 food_eval[j] = trial_eval
@@ -187,16 +175,15 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
                 counter[j] += 1
 
         # Calculating probablities
-        trial_prob = [food_fit[k]/sum(food_fit) for k in range(n_food)]
-        indeces = np.random.choice(
-            [i for i in range(n_food)], size=n_food, p=trial_prob)
+        trial_prob = [1-food_fit[k]/sum(food_fit) for k in range(n_food)]
+        trial_prob = [i/sum(trial_prob) for i in trial_prob]
+        indeces = np.random.choice([i for i in range(n_food)], size=n_food, p=trial_prob)
 
         # Onlooker bee phase
         for h in range(n_food):
             bee = indeces[h]
             trial_store = pertubation(food_source, n_food, bee, bounds)
-            trial_fit, trial_eval, trial_source = fitness(
-                trial_store, function)
+            trial_fit, trial_eval, trial_source = fitness(trial_store, function)
 
             if trial_fit > food_fit[bee]:
                 food_eval[bee] = trial_eval
@@ -214,13 +201,13 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
 
         # Scout phase
         scout_bees = [i for i, v in enumerate(counter) if v > limit]
+        min_values = np.array([min(food_source[:,i]) for i in range(len(bounds))])
+        max_values = np.array([max(food_source[:,i]) for i in range(len(bounds))])
         for k in scout_bees:
             if counter[k] > limit:
-                food_source[k] = bounds[:, 0] + \
-                    np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
+                food_source[k] = min_values + np.random.rand(len(bounds)) * (max_values - min_values)
                 food_eval[k] = function(food_source[k])
-                food_fit[k] = 1/(1+food_eval[k]
-                                 ) if food_eval[k] >= 0 else 1 + abs(food_eval[k])
+                food_fit[k] = 1/(1+food_eval[k]) if food_eval[k] >= 0 else 1 + abs(food_eval[k])
                 counter[k] = 0
             else:
                 pass
@@ -253,7 +240,7 @@ def firefly_alg(function, bounds, max_eval, pop_size=10, alpha=1.0, betamin=1.0,
     time_start = time.time()
 
     while evaluations <= max_eval:
-        new_alpha *= 0.97
+        new_alpha *= 0.98
         for i in range(pop_size):
             for j in range(pop_size):
                 if intensity[i] >= intensity[j]:

@@ -20,32 +20,27 @@ dimension = len(bounds)
 np.set_printoptions(precision=4)
 
 
-[best_eval, best_val, obj_track, timing] = alg.sim_annealing(
-    function, n, M, bounds, 1, t_range, step)
+[best_eval, best_val, obj_track, timing] = alg.sim_annealing(function, n, M, bounds, 1, t_range, step)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 plt.yscale('log')
 plt.xlabel("Time (s)")
 plt.ylabel("Objective Function")
 
-[best_eval, best_val, obj_track, timing] = alg.particle_swarm(
-    function, 700, error, bounds, no_particles, parameters)
+[best_eval, best_val, obj_track, timing] = alg.particle_swarm(function, 700, error, bounds, no_particles, parameters)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.artificial_bee(
-    function, 900, bounds, 24, 1450)
+[best_eval, best_val, obj_track, timing] = alg.artificial_bee(function, 900, bounds, 20, 600)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.firefly_alg(
-    function, bounds, 900, 350)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds, 60000,20,2)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
-plt.legend(["Simulated Annealing", "Particle Swarm",
-           "Artificial Bee Colony", "Firefly Algorithm"])
+plt.legend(["Simulated Annealing", "Particle Swarm","Artificial Bee Colony", "Firefly Algorithm"])
 plt.title(f' Objective Function vs Time (s) for {dimension} Dimensions')
 plt.show()

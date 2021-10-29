@@ -1,11 +1,15 @@
 import numpy as np
-from numpy.random import default_rng
+import matplotlib.pyplot as plt
 import Functions as fun
 import Algorithms as alg
-function = fun.Rosenbrock
-bounds = np.asarray([[-10, 10]]*2)
 
-best, best_source, obj_track, timing = alg.firefly_alg(
-    function, bounds, 100, 300)
+bounds = np.asarray([[-5, 5]]*10)
 
-print(best, best_source)
+
+[best_eval, best_val, obj_track, timing] = alg.artificial_bee(fun.Ackley,200, bounds,800, 10)
+print("{:.5f}".format(best_eval), best_val)
+plt.yscale('log')
+plt.xlabel("Time (s)")
+plt.ylabel("Objective Function")
+plt.plot(timing, obj_track)
+plt.show()
