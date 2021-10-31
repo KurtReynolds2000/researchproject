@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import Functions as fun
-import Algorithms as alg
+import Firefly as alg
 
-bounds = np.asarray([[-5, 5]]*10)
+bounds = np.asarray([[-10, 10]]*5)
 
 
-[best_eval, best_val, obj_track, timing] = alg.artificial_bee(fun.Ackley,200, bounds,800, 10)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(fun.Rosenbrock,bounds,1000,25,0.2,2,1)
 print("{:.5f}".format(best_eval), best_val)
 plt.yscale('log')
 plt.xlabel("Time (s)")

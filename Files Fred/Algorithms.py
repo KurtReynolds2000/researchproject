@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from math import e, inf, exp
+from math import exp
 import math as mt
 
 
@@ -201,16 +201,13 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
 
         # Scout phase
         scout_bees = [i for i, v in enumerate(counter) if v > limit]
-        min_values = np.array([min(food_source[:,i]) for i in range(len(bounds))])
-        max_values = np.array([max(food_source[:,i]) for i in range(len(bounds))])
         for k in scout_bees:
+    
             if counter[k] > limit:
-                food_source[k] = min_values + np.random.rand(len(bounds)) * (max_values - min_values)
+                food_source[k] = bounds[:,0] + np.random.rand(len(bounds)) * (bounds[:,1]-bounds[:,0])
                 food_eval[k] = function(food_source[k])
                 food_fit[k] = 1/(1+food_eval[k]) if food_eval[k] >= 0 else 1 + abs(food_eval[k])
                 counter[k] = 0
-            else:
-                pass
 
         timing.append(time.time() - time_start)
         object_track.append(best_eval)
@@ -219,7 +216,7 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
     return (best_eval, best_source, object_track, timing)
 
 
-def firefly_alg(function, bounds, max_eval, pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01, seed=None):
+def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-4,seed=None):
     """
     This is a function which follows the firefly algorithm
     """
@@ -229,34 +226,59 @@ def firefly_alg(function, bounds, max_eval, pop_size=10, alpha=1.0, betamin=1.0,
     ub = bounds[:, 1]
     obj_track = list()
     timing = list()
+
     fireflies = rng.uniform(lb, ub, (pop_size, dim))
+    new_fireflies = np.empty((pop_size,dim))
     intensity = np.apply_along_axis(function, 1, fireflies)
+    new_intensity = np.empty(pop_size)
+    store_val = np.empty(dim)
+    pop_double = np.empty((2*pop_size,dim))
+    int_double = np.empty(2*pop_size)
+    sort_order = int_double
+    
     best = np.min(intensity)
     best_source = np.zeros(len(bounds))
 
-    evaluations = pop_size
     new_alpha = alpha
-    search_range = ub - lb
+    dmax = (ub-lb)*np.sqrt(dim)
+    delta = 0.05 * (ub-lb)
     time_start = time.time()
+    k = 0
 
-    while evaluations <= max_eval:
-        new_alpha *= 0.98
+    while k <= max_eval:
         for i in range(pop_size):
+            new_intensity[i] = float('inf')
             for j in range(pop_size):
-                if intensity[i] >= intensity[j]:
-                    r = np.sum(np.square(fireflies[i] - fireflies[j]), axis=-1)
-                    beta = betamin * np.exp(-gamma * r**2)
-                    steps = new_alpha * (rng.random(dim) - 0.5) * search_range
-                    fireflies[i] += beta * \
-                        (fireflies[j] - fireflies[i]) + steps
-                    fireflies[i] = np.clip(fireflies[i], lb, ub)
-                    intensity[i] = function(fireflies[i])
-                    evaluations += 1
+                if intensity[i] > intensity[j]:
+                    r = np.sum(np.square(fireflies[i] - fireflies[j]))/dmax
+                    beta = betamin * np.exp(-gamma * r**2)* np.random.random(dim)
+                    steps = new_alpha * (np.random.uniform(-1,1,size=dim)) * delta
+                    store_val = fireflies[i] + beta * (fireflies[j] - fireflies[i]) + steps
+                    store_val = np.clip(store_val, lb, ub)
+                    store_eval = function(store_val)
 
-                    best = min(intensity[i], best)
-                    best_index = np.argmin(intensity)
-                    best_source = fireflies[best_index]
+                    if store_eval < new_intensity[i]:
+                        new_intensity[i] = store_eval
+                        new_fireflies[i] = store_val
+                        if store_eval < best:
+                             best = store_eval
+                             best_source = store_val
+                    
                     obj_track.append(best)
                     timing.append(time.time()-time_start)
 
+        
+        k += 1
+        new_alpha *= 0.98
+        pop_double = np.concatenate((fireflies,new_fireflies))
+        int_double = np.concatenate((intensity,new_intensity))
+        sort_order = np.argsort(int_double)
+        pop_double = pop_double[sort_order]
+        int_double = int_double[sort_order]
+
+        intensity = int_double[0:pop_size]
+        fireflies = pop_double[0:pop_size]
+
+        if sum(abs(best-intensity)) < error:
+            break
     return (best, best_source, obj_track, timing)

@@ -32,12 +32,12 @@ print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.artificial_bee(function, 900, bounds, 20, 600)
+[best_eval, best_val, obj_track, timing] = alg.artificial_bee(function, 150, bounds, 600, 10)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds, 60000,20,2)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,1000,25,1,1,0.01)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
