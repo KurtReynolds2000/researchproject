@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 import Functions as fun
 import Algorithms as alg
 
-bounds = np.asarray([[-5, 5]]*10)
+bounds = np.asarray([[-10, 10]]*5)
 
-
-[best_eval, best_val, obj_track, timing] = alg.artificial_bee(fun.Ackley,200, bounds,800, 10)
-print("{:.5f}".format(best_eval), best_val)
+[obj_track, timing, best, best_index] = alg.genetic(fun.Rosenbrock,bounds,75,100,1000)
+print("{:.5f}".format(best), best_index)
 plt.yscale('log')
 plt.xlabel("Time (s)")
 plt.ylabel("Objective Function")

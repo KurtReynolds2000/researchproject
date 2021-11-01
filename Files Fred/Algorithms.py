@@ -2,6 +2,7 @@ import numpy as np
 import time
 from math import e, inf, exp
 import math as mt
+import random
 
 
 def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
@@ -260,3 +261,43 @@ def firefly_alg(function, bounds, max_eval, pop_size=10, alpha=1.0, betamin=1.0,
                     timing.append(time.time()-time_start)
 
     return (best, best_source, obj_track, timing)
+
+
+def genetic(function,bounds,survival_percentage,no_points,no_iterations):
+    
+    #Initialising variables
+    boundlength = len(bounds)
+    dimensions = list(range(1,boundlength+1))
+    particles = list(range(1,no_points+1))
+    pos = np.zeros((len(particles),len(dimensions)+1))
+    timing = list()
+    obj_track = list()
+    t_start = time.time()
+
+    # First set of points
+    for particle in particles:
+        for dimension in dimensions:
+            pos[particle-1,dimension-1] = random.randrange(round(bounds[dimension-1,0]),round(bounds[dimension-1,1]))
+        pos[particle-1,-1] = function(pos[particle-1,0:-1])
+    pos = np.sort(pos,axis=0)
+
+    # Producing new points and iterating
+    iterations = list(range(1,no_iterations))
+    for iteration in iterations:
+        no_survivors = round(survival_percentage/100*len(pos))
+        pos = pos[0:no_survivors,:]
+
+        children = np.zeros((round(len(pos)*100/survival_percentage-no_survivors),len(dimensions)+1))
+        for child in range(round(len(pos)*100/survival_percentage)-no_survivors): 
+            for dimension in dimensions:
+                children[child-1,dimension-1] = np.clip(0.001*random.randrange(-100,100)*random.choice(pos[0:no_survivors,dimension-1]),bounds[dimension-1,0],bounds[dimension-1,1])
+
+            children[child-1,-1] = function(children[child-1,0:-1])
+
+        pos = np.vstack([children,pos])
+        pos = np.sort(pos,axis=0,)
+        best = pos[0,-1]
+        best_index = pos[0,0:-1]
+        timing.append(time.time()-t_start)
+        obj_track.append(best)
+    return (obj_track, timing, best, best_index)
