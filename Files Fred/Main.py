@@ -9,13 +9,13 @@ import Functions as fun
 n = 500
 M = 400
 t_range = [1, 0.05]
-bounds = np.asarray([[-5, 5]]*10)
+bounds = np.asarray([[-100, 100]]*2)
 step = 0.5
-# parameters = (0.4, 1, 0.5)  # for rastrigin
-parameters = (0.5, 0.9, 0.5)
+parameters = (0.4, 1, 0.5)  # for rastringin
+# parameters = (0.5, 0.9, 0.5)
 error = 1e-5
 no_particles = 1000
-function = fun.Ackley
+function = fun.Beale
 dimension = len(bounds)
 np.set_printoptions(precision=4)
 
@@ -32,15 +32,19 @@ print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.artificial_bee(function, 150, bounds, 600, 10)
+[best_eval, best_val, obj_track, timing] = alg.artificial_bee(function, 900, bounds, 20, 600)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,1000,25,0.2,2,1)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds, 60000,20,2)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
-plt.legend(["Simulated Annealing", "Particle Swarm","Artificial Bee Colony", "Firefly Algorithm"])
+[obj_track, timing, best, best_index] = alg.genetic(function,bounds,30,30,1000)
+print("{:.5f}".format(best), best_index)
+plt.plot(timing, obj_track)
+
+plt.legend(["Simulated Annealing", "Particle Swarm","Artificial Bee Colony", "Firefly Algorithm", "Genetic Algorithm", "Genetic Algorithm"])
 plt.title(f' Objective Function vs Time (s) for {dimension} Dimensions')
 plt.show()
