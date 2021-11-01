@@ -37,7 +37,7 @@ print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,1000,25,1,1,0.01)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,200,50,1,1,0.01)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
