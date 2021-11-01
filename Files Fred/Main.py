@@ -9,13 +9,13 @@ import Functions as fun
 n = 500
 M = 400
 t_range = [1, 0.05]
-bounds = np.asarray([[-5.12, 5.12]]*10)
+bounds = np.asarray([[-5, 5]]*10)
 step = 0.5
-parameters = (0.4, 1, 0.5)  # for rastringin
-# parameters = (0.5, 0.9, 0.5)
+# parameters = (0.4, 1, 0.5)  # for rastrigin
+parameters = (0.5, 0.9, 0.5)
 error = 1e-5
 no_particles = 1000
-function = fun.Rastringin
+function = fun.Ackley
 dimension = len(bounds)
 np.set_printoptions(precision=4)
 
@@ -37,7 +37,7 @@ print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 
 
-[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,200,50,1,1,0.01)
+[best_eval, best_val, obj_track, timing] = alg.firefly_alg(function, bounds,1000,25,0.2,2,1)
 print("{:.5f}".format(best_eval), best_val)
 plt.plot(timing, obj_track)
 

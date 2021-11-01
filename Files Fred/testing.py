@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import Functions as fun
-import Firefly as alg
+import Algorithms as alg
 
-bounds = np.asarray([[-10, 10]]*5)
+bounds = np.asarray([[-10, 10]]*10)
 
 
 [best_eval, best_val, obj_track, timing] = alg.firefly_alg(fun.Rosenbrock,bounds,1000,25,0.2,2,1)

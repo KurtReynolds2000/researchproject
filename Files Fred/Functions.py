@@ -1,5 +1,4 @@
 import math as mt
-import numpy as np
 
 
 def Rosenbrock(x):
@@ -8,14 +7,11 @@ def Rosenbrock(x):
     Optimum is f(x) = 0 for x = 1
     """
 
-    z = 0
-    for i in range(len(x)-1):
-        z += 100 * (x[i+1]-x[i]**2)**2 + (1-x[i])**2
-
+    z = sum(100.0*(x[1:] - x[:-1]**2.0)**2.0 + (1 - x[:-1])**2.0)
     return z
 
 
-def Rastringin(x):
+def Rastrigin(x):
     """
     x within range of [-5.12,5.12] for all n dimensions
     Optimum is f(x) = 0 for x = 0
