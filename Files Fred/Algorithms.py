@@ -59,10 +59,6 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
     return [best_eval, best_val, obj_track, timing]
 
 
-def genetic(function, placeholder):
-    pass
-
-
 def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
     """
     This is an algorithm for the particle swarm optimisation
@@ -146,7 +142,7 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
 
     # Initialising parameters
     n_food = mt.floor(n_bees / 2)
-    food_source = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for i in range(n_food)])
+    food_source = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_food)])
     food_eval = [function(food_source[i]) for i in range(n_food)]
     food_fit = np.empty(n_food)
     counter = np.empty(n_food)
@@ -217,7 +213,7 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
     return (best_eval, best_source, object_track, timing)
 
 
-def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-4,seed=None):
+def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-5,seed=None):
     """
     This is a function which follows the firefly algorithm
     """
@@ -268,7 +264,6 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
                     obj_track.append(best)
                     timing.append(time.time()-time_start)
 
-        
         k += 1
         new_alpha *= 0.98
         pop_double = np.concatenate((fireflies,new_fireflies))
@@ -284,8 +279,161 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
             break
     return (best, best_source, obj_track, timing)
 
-def genetic(function,bounds,survival_percentage,no_points,no_iterations):
+
+def diff_evolution(function,bounds,n_pop,n_iter,crossover,weight):
+    """
+    This is an algorithm representing differential evolution
+    Crossover is a probability, weight should in range [0,2]
+    Classical values are CR = 0.9, Weight = 0.8 and n_pop = 10 * n
+    """
     
+    # Storing solutions
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    timing = list()
+    
+    #Parameter initialisation
+    agent_coords = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
+    agent_fit = np.apply_along_axis(function,1,agent_coords)
+    agent_store = np.empty(dim)
+    index_list = np.empty(3)
+    a = np.empty(dim)
+    b = np.empty(dim)
+    c = np.empty(dim)
+    i = 0
+    time_start = time.time()
+
+    # Start of algorithm
+    while i < n_iter:
+        for k in range(n_pop): 
+            
+            for j in range(3):
+               index_list[j] = int(np.random.randint(0,n_pop-1))
+               while index_list[j] == k or index_list[j] in index_list[:j]:
+                   index_list[j] = int(np.random.randint(0,n_pop-1))
+
+            d,e,f = int(index_list[0]),int(index_list[1]),int(index_list[2])
+            a,b,c = agent_coords[d],agent_coords[e],agent_coords[f]
+            random_index = np.random.uniform(0,n_pop-1)
+            
+            for j in range(dim):
+                random_no = np.random.rand()
+                if random_no < crossover or j == random_index:
+                    agent_store[j] = a[j] + weight* (b[j] - c[j])
+                else:
+                    agent_store[j] = agent_coords[k,j]
+
+            agent_eval = function(agent_store)
+
+            if agent_eval < agent_fit[k]:
+                agent_fit[k] = agent_eval
+                agent_coords[k] = agent_store
+                
+                if agent_eval < best_eval:
+                    best_coords = agent_store
+                    best_eval = agent_eval
+
+        object_track.append(best_eval)
+        timing.append(time.time()- time_start)
+
+        i += 1
+
+    return (best_eval, best_coords, object_track, timing)
+
+
+def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,error_tol=1e-6):
+    """
+    This algorithm represents the downhill simplex algorithm
+    c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
+    Typical values include the following: c_reflect = 1, c_exp = 2, c_cont = 0.5, c_shrnk = 0.5
+    error_tol is a stopping criteria which is compared to standard deviation of function values of simplex
+    """
+     
+     # Centroid function
+    def centroid(arr,dim):
+        arr = arr[:-1]
+        length = arr.shape[0]
+        sum_p = np.array([np.sum(arr[:,k]) for k in range(dim)])
+        return sum_p/length
+     
+    # Storing solutions
+    dim = len(bounds)
+    n_points = dim + 1
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    timing = list()
+    
+    #Parameter initialisation
+    point_coords = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_points)])
+    points_fit = np.apply_along_axis(function,1,point_coords)
+    centroid_coor = np.empty(dim)
+    x_reflct = np.empty(dim)
+    x_exp = np.empty(dim)
+    x_cont = np.empty(dim)
+    sort_order = np.empty(dim+1)
+    i = 0
+    time_start = time.time()
+    # Start of algorithm
+
+    while i < n_iter:
+        # Step 1: Order points accoridng to values of inteces
+        sort_order = np.argsort(points_fit)
+        points_fit = points_fit[sort_order]
+        point_coords = point_coords[sort_order]
+
+        # Calculate standard deviation of function values for simplex
+        deviation = np.std(points_fit)
+        if deviation < error_tol:
+            break
+
+        # Step 2: Calculate the centroid
+        centroid_coor = centroid(point_coords,dim)
+
+        # Step 3: Reflection / Expansion / Contraction / Shrinking
+        x_reflct = centroid_coor + c_reflct* (centroid_coor - point_coords[-1])
+        reflct_eval = function(x_reflct)
+
+        if points_fit[0] <= reflct_eval <= points_fit[-2]: # Reflection
+           points_fit[-1] = reflct_eval
+           point_coords[-1] = x_reflct
+        elif reflct_eval < points_fit[0]: # Expansion
+            x_exp = centroid_coor + c_exp* (x_reflct-centroid_coor)
+            exp_eval = function(x_exp)
+            if exp_eval < reflct_eval:
+                points_fit[-1] = exp_eval
+                point_coords[-1] = x_exp
+            else:
+                points_fit[-1] = reflct_eval
+                point_coords[-1] = x_reflct
+        else: # Contraction
+           x_cont = centroid_coor + c_cont*(point_coords[-1]-centroid_coor)
+           cont_eval = function(x_cont)
+           if cont_eval < points_fit[-1]:
+                points_fit[-1] = cont_eval
+                point_coords[-1] = x_cont
+           else: # Shrinking
+               best_point = point_coords[0]
+               for j in range(1,dim):
+                  point_coords[j] = best_point + c_shrnk* (point_coords[j]-best_point)
+                  points_fit[j] = function(point_coords[j])
+        
+        # Get the best point
+        if points_fit[0] < best_eval:
+            best_eval = points_fit[0]
+            best_coords = point_coords[0]
+        
+        object_track.append(best_eval)
+        timing.append(time.time()-time_start)
+        i += 1
+
+    return (best_eval, best_coords, object_track, timing)
+
+
+def genetic(function,bounds,survival_percentage,no_points,no_iterations):
+
     #Initialising variables
     boundlength = len(bounds)
     dimensions = list(range(1,boundlength+1))
@@ -311,7 +459,7 @@ def genetic(function,bounds,survival_percentage,no_points,no_iterations):
         children = np.zeros((round(len(pos)*100/survival_percentage-no_survivors),len(dimensions)+1))
         for child in range(round(len(pos)*100/survival_percentage)-no_survivors): 
             for dimension in dimensions:
-                children[child-1,dimension-1] = np.clip(0.001*random.randrange(-100,100)*random.choice(pos[0:no_survivors,dimension-1]),bounds[dimension-1,0],bounds[dimension-1,1])
+                children[child-1,dimension-1] = np.clip(0.01*random.randrange(-90,110)*random.choice(pos[0:no_survivors,dimension-1]),bounds[dimension-1,0],bounds[dimension-1,1])
 
             children[child-1,-1] = function(children[child-1,0:-1])
 
