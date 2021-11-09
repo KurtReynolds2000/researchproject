@@ -31,6 +31,8 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
     curr_val, curr_eval = best_val, best_eval
     t_init, t_final = t_range[0], t_range[1]
     obj_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
     t_start = time.time()
 
@@ -39,6 +41,7 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
         for i in range(n_iter):
             config_val = curr_val + np.random.randn(len(bounds)) * step
             config_eval = function(config_val)
+            obj_counter += 1
             diff = config_eval - curr_eval
 
             if config_eval < best_eval:
@@ -53,10 +56,11 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
 
             timing.append(time.time()-t_start)
             obj_track.append(best_eval)
+            obj_counter_track.append(obj_counter)
 
         temp = t_select(t_init, t_final, M, j)
 
-    return [best_eval, best_val, obj_track, timing]
+    return [best_eval, best_val, obj_track, obj_counter_track, timing]
 
 
 def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
@@ -69,6 +73,8 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
     part_position = np.zeros((n_particles, len(bounds)), dtype=np.float32)
     part_velocity = part_position
     obj_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
 
     for particle in range(n_particles):
@@ -86,6 +92,7 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
 
         for k in range(n_particles):
             eval_candidate = function(part_position[k])
+            obj_counter += 1
 
             if eval_candidate < part_beval[k]:
                 part_beval[k] = eval_candidate
@@ -104,11 +111,12 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
         i = i + 1
         timing.append(time.time()-t_start)
         obj_track.append(group_eval)
+        obj_counter_track.append(obj_counter)
 
-    return [group_eval, group_position, obj_track, timing]
+    return [group_eval, group_position, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, n_iter, bounds, n_bees, limit):
+def artificial_bee(function, bounds, n_iter, n_bees, limit):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -138,6 +146,8 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
     best_source = np.empty(len(bounds))
     best_eval = float('inf')
     object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
 
     # Initialising parameters
@@ -162,6 +172,7 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
         for j in range(n_food):
             trial_store = pertubation(food_source, n_food, j, bounds)
             trial_fit, trial_eval, trial_source = fitness(trial_store, function)
+            obj_counter += 1
 
             if trial_fit > food_fit[j]:
                 food_eval[j] = trial_eval
@@ -181,6 +192,7 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
             bee = indeces[h]
             trial_store = pertubation(food_source, n_food, bee, bounds)
             trial_fit, trial_eval, trial_source = fitness(trial_store, function)
+            obj_counter += 1
 
             if trial_fit > food_fit[bee]:
                 food_eval[bee] = trial_eval
@@ -203,14 +215,16 @@ def artificial_bee(function, n_iter, bounds, n_bees, limit):
             if counter[k] > limit:
                 food_source[k] = bounds[:,0] + np.random.rand(len(bounds)) * (bounds[:,1]-bounds[:,0])
                 food_eval[k] = function(food_source[k])
+                obj_counter += 1
                 food_fit[k] = 1/(1+food_eval[k]) if food_eval[k] >= 0 else 1 + abs(food_eval[k])
                 counter[k] = 0
 
         timing.append(time.time() - time_start)
         object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
         i += 1
 
-    return (best_eval, best_source, object_track, timing)
+    return (best_eval, best_source, object_track, obj_counter_track, timing)
 
 
 def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-5,seed=None):
@@ -222,6 +236,8 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
     lb = bounds[:, 0]
     ub = bounds[:, 1]
     obj_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
 
     fireflies = rng.uniform(lb, ub, (pop_size, dim))
@@ -253,6 +269,7 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
                     store_val = fireflies[i] + beta * (fireflies[j] - fireflies[i]) + steps
                     store_val = np.clip(store_val, lb, ub)
                     store_eval = function(store_val)
+                    obj_counter += 1
 
                     if store_eval < new_intensity[i]:
                         new_intensity[i] = store_eval
@@ -263,6 +280,7 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
                     
                     obj_track.append(best)
                     timing.append(time.time()-time_start)
+                    obj_counter_track.append(obj_counter)
 
         k += 1
         new_alpha *= 0.98
@@ -277,10 +295,10 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
 
         if sum(abs(best-intensity)) < error:
             break
-    return (best, best_source, obj_track, timing)
+    return (best, best_source, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function,bounds,n_pop,n_iter,crossover,weight):
+def diff_evolution(function,bounds,n_pop,n_iter,crossover=0.9, weight=0.8):
     """
     This is an algorithm representing differential evolution
     Crossover is a probability, weight should in range [0,2]
@@ -292,6 +310,8 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover,weight):
     best_coords = np.empty(dim)
     best_eval = float('inf')
     object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
     
     #Parameter initialisation
@@ -326,6 +346,7 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover,weight):
                     agent_store[j] = agent_coords[k,j]
 
             agent_eval = function(agent_store)
+            obj_counter += 1
 
             if agent_eval < agent_fit[k]:
                 agent_fit[k] = agent_eval
@@ -337,10 +358,11 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover,weight):
 
         object_track.append(best_eval)
         timing.append(time.time()- time_start)
+        obj_counter_track.append(obj_counter)
 
         i += 1
 
-    return (best_eval, best_coords, object_track, timing)
+    return (best_eval, best_coords, object_track, obj_counter_track, timing)
 
 
 def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,error_tol=1e-6):
@@ -364,6 +386,8 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
     best_coords = np.empty(dim)
     best_eval = float('inf')
     object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
     
     #Parameter initialisation
@@ -379,7 +403,7 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
     # Start of algorithm
 
     while i < n_iter:
-        # Step 1: Order points accoridng to values of inteces
+        # Step 1: Order points according to values of indeces
         sort_order = np.argsort(points_fit)
         points_fit = points_fit[sort_order]
         point_coords = point_coords[sort_order]
@@ -395,6 +419,7 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
         # Step 3: Reflection / Expansion / Contraction / Shrinking
         x_reflct = centroid_coor + c_reflct* (centroid_coor - point_coords[-1])
         reflct_eval = function(x_reflct)
+        obj_counter += 1
 
         if points_fit[0] <= reflct_eval <= points_fit[-2]: # Reflection
            points_fit[-1] = reflct_eval
@@ -402,6 +427,7 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
         elif reflct_eval < points_fit[0]: # Expansion
             x_exp = centroid_coor + c_exp* (x_reflct-centroid_coor)
             exp_eval = function(x_exp)
+            obj_counter += 1
             if exp_eval < reflct_eval:
                 points_fit[-1] = exp_eval
                 point_coords[-1] = x_exp
@@ -411,6 +437,7 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
         else: # Contraction
            x_cont = centroid_coor + c_cont*(point_coords[-1]-centroid_coor)
            cont_eval = function(x_cont)
+           obj_counter += 1
            if cont_eval < points_fit[-1]:
                 points_fit[-1] = cont_eval
                 point_coords[-1] = x_cont
@@ -419,6 +446,7 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
                for j in range(1,dim):
                   point_coords[j] = best_point + c_shrnk* (point_coords[j]-best_point)
                   points_fit[j] = function(point_coords[j])
+                  obj_counter += 1
         
         # Get the best point
         if points_fit[0] < best_eval:
@@ -427,9 +455,10 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
         
         object_track.append(best_eval)
         timing.append(time.time()-time_start)
+        obj_counter_track.append(obj_counter)
         i += 1
 
-    return (best_eval, best_coords, object_track, timing)
+    return (best_eval, best_coords, object_track, obj_counter_track, timing)
 
 
 def genetic(function,bounds,survival_percentage,no_points,no_iterations):
