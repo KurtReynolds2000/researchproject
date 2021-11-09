@@ -227,7 +227,7 @@ def artificial_bee(function, bounds, n_iter, n_bees, limit):
     return (best_eval, best_source, object_track, obj_counter_track, timing)
 
 
-def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-5,seed=None):
+def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-20,seed=None):
     """
     This is a function which follows the firefly algorithm
     """
@@ -365,7 +365,7 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover=0.9, weight=0.8):
     return (best_eval, best_coords, object_track, obj_counter_track, timing)
 
 
-def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,error_tol=1e-6):
+def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,error_tol=1e-20):
     """
     This algorithm represents the downhill simplex algorithm
     c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
