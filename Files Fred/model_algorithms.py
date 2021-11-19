@@ -14,10 +14,10 @@ import os
 abs_path = (os.path.abspath(os.path.join(os.path.dirname(__file__),'..','DeepDock\\data')))
 
 # Specify which target to load with indent
-indent = "1z6e_"
-protein_id = indent + "protein.ply"
-ligand_id = indent + "ligand.mol2"
-csv_id = indent + "target.csv"
+ident = "1z6e_"
+protein_id = ident + "protein.ply"
+ligand_id = ident + "ligand.mol2"
+csv_id = ident + "target.csv"
 
 
 # Specify the ligand and target to optimise 
@@ -53,12 +53,12 @@ class save_csv():
         df_rates = pd.DataFrame.from_dict(self.data)
         df_rates.to_csv(self.csv_id,index=False) 
 
-my_algorithms = {"SMPLX":dh_simplex}
+my_algorithms = {"SA":sim_annealing,"PSO":particle_swarm,"ABC":artificial_bee,"Firefly":firefly_alg,"DE":diff_evolution,"SMPLX":dh_simplex}
 
 save_data = save_csv(csv_id)
 for name,alg in my_algorithms.items():
     algorithm = my_algorithms[name]
-    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=None,maxiter=5000,device=device)
+    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=None,maxiter=100,device=device)
     print("running")
     save_data.prepare_data(result,name)
 
