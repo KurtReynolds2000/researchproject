@@ -2,10 +2,11 @@ import numpy as np
 import time
 from math import exp
 import math as mt
-import random
+
+import Alg_conditions as AC
 
 
-def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
+def sim_annealing(function, bounds, max_iter, max_eval, n=100, t_schedule=1, t_range=[1,0.05], step=1, seed=123):
     """
     This is the algorithm for performing simulated annealing including several cooling schedules
     """
@@ -25,6 +26,15 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
 
     # Initialise variables
 
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination message
+
     temp = sum(t_range)/len(t_range)
     best_val = bounds[:, 0] + np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
     best_eval = function(best_val)
@@ -35,13 +45,20 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
     obj_counter_track = list()
     timing = list()
     t_start = time.time()
+    j = 0
 
-    for j in range(M):    # Outer loop iteration
+    while j <= max_iter:    # Outer loop iteration
 
-        for i in range(n_iter):
+        for _ in range(n):
             config_val = curr_val + np.random.randn(len(bounds)) * step
             config_eval = function(config_val)
             obj_counter += 1
+
+            # Check whether algorithm has exceeded no. of f eval 
+            if obj_counter >= max_eval:
+                error = 3
+                break
+
             diff = config_eval - curr_eval
 
             if config_eval < best_eval:
@@ -54,23 +71,41 @@ def sim_annealing(function, n_iter, M, bounds, t_schedule, t_range, step):
                 else:
                     pass
 
-            timing.append(time.time()-t_start)
-            obj_track.append(best_eval)
-            obj_counter_track.append(obj_counter)
+        timing.append(time.time()-t_start)
+        obj_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
 
-        temp = t_select(t_init, t_final, M, j)
+        temp = t_select(t_init, t_final, max_iter, j)
+        j += 1
 
-    return [best_eval, best_val, obj_track, obj_counter_track, timing]
+    
+    obj_class.xarray = best_val
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = j
+    obj_class.n_feval = obj_counter
+
+    return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
+def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 100, parameter = [0.5,0.9,0.5], tol=1e-6, seed=123):
     """
     This is an algorithm for the particle swarm optimisation
     """
+
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
     # Initialise parameters for algorithm
     w, c_1, c_2 = parameter[0], parameter[1], parameter[2]
     # Initialise individual particle properties
-    part_position = np.zeros((n_particles, len(bounds)), dtype=np.float32)
+    part_position = np.empty([n_particles, len(bounds)])
     part_velocity = part_position
     obj_track = list()
     obj_counter = 0
@@ -88,7 +123,7 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
     i = 0
     t_start = time.time()
 
-    while i < n_iter:
+    while i < max_iter:
 
         for k in range(n_particles):
             eval_candidate = function(part_position[k])
@@ -105,22 +140,43 @@ def particle_swarm(function, n_iter, error, bounds, n_particles, parameter):
             part_velocity[k] = w * part_velocity[k] + c_1 * np.random.random() * (part_bposition[k]-part_position[k]) + c_2 * np.random.random() * (group_position - part_position[k])
             part_position[k] += part_velocity[k]
 
-        if sum(abs(group_eval - part_beval)) < error:
-            break
 
         i = i + 1
         timing.append(time.time()-t_start)
         obj_track.append(group_eval)
         obj_counter_track.append(obj_counter)
 
-    return [group_eval, group_position, obj_track, obj_counter_track, timing]
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(part_beval,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = group_position
+    obj_class.set_message(error)
+    obj_class.eval = group_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, n_iter, n_bees, limit):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-6, seed=123):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
 
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+    
     # Helper function for calculating fitness
     def fitness(store, func):
 
@@ -166,7 +222,7 @@ def artificial_bee(function, bounds, n_iter, n_bees, limit):
     time_start = time.time()
     i = 0
 
-    while i <= n_iter:
+    while i <= max_iter:
 
         # Employer bee phase
         for j in range(n_food):
@@ -210,8 +266,8 @@ def artificial_bee(function, bounds, n_iter, n_bees, limit):
 
         # Scout phase
         scout_bees = [i for i, v in enumerate(counter) if v > limit]
+
         for k in scout_bees:
-    
             if counter[k] > limit:
                 food_source[k] = bounds[:,0] + np.random.rand(len(bounds)) * (bounds[:,1]-bounds[:,0])
                 food_eval[k] = function(food_source[k])
@@ -223,15 +279,38 @@ def artificial_bee(function, bounds, n_iter, n_bees, limit):
         object_track.append(best_eval)
         obj_counter_track.append(obj_counter)
         i += 1
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(food_eval,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
 
-    return (best_eval, best_source, object_track, obj_counter_track, timing)
+    obj_class.xarray = best_source
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, object_track, obj_counter_track, timing)
 
 
-def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, gamma=0.01,error=1e-20,seed=None):
+def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-6,seed=123):
+    
     """
     This is a function which follows the firefly algorithm
     """
-    rng = np.random.default_rng(seed)
+
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
     dim = len(bounds)
     lb = bounds[:, 0]
     ub = bounds[:, 1]
@@ -240,7 +319,7 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
     obj_counter_track = list()
     timing = list()
 
-    fireflies = rng.uniform(lb, ub, (pop_size, dim))
+    fireflies = np.random.uniform(lb, ub, (pop_size, dim))
     new_fireflies = np.empty((pop_size,dim))
     intensity = np.apply_along_axis(function, 1, fireflies)
     new_intensity = np.empty(pop_size)
@@ -258,9 +337,11 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
     time_start = time.time()
     k = 0
 
-    while k <= max_eval:
+    while k <= max_iter:
+
         for i in range(pop_size):
             new_intensity[i] = float('inf')
+
             for j in range(pop_size):
                 if intensity[i] > intensity[j]:
                     r = np.sum(np.square(fireflies[i] - fireflies[j]))/dmax
@@ -272,15 +353,15 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
                     obj_counter += 1
 
                     if store_eval < new_intensity[i]:
-                        new_intensity[i] = store_eval
+                        new_intensity[i] = np.array(store_eval)
                         new_fireflies[i] = store_val
                         if store_eval < best:
                              best = store_eval
                              best_source = store_val
                     
-                    obj_track.append(best)
-                    timing.append(time.time()-time_start)
-                    obj_counter_track.append(obj_counter)
+        obj_track.append(best)
+        timing.append(time.time()-time_start)
+        obj_counter_track.append(obj_counter)
 
         k += 1
         new_alpha *= 0.98
@@ -293,18 +374,40 @@ def firefly_alg(function, bounds, max_eval,pop_size=10, alpha=1.0, betamin=1.0, 
         intensity = int_double[0:pop_size]
         fireflies = pop_double[0:pop_size]
 
-        if sum(abs(best-intensity)) < error:
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(intensity,tol):
+            error = 1
             break
-    return (best, best_source, obj_track, obj_counter_track, timing)
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_source
+    obj_class.set_message(error)
+    obj_class.eval = best
+    obj_class.n_iter = k
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function,bounds,n_pop,n_iter,crossover=0.9, weight=0.8):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-6,seed=123):
+    
     """
     This is an algorithm representing differential evolution
     Crossover is a probability, weight should in range [0,2]
     Classical values are CR = 0.9, Weight = 0.8 and n_pop = 10 * n
     """
     
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
     # Storing solutions
     dim = len(bounds)
     best_coords = np.empty(dim)
@@ -326,9 +429,9 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover=0.9, weight=0.8):
     time_start = time.time()
 
     # Start of algorithm
-    while i < n_iter:
+    while i < max_iter:
+
         for k in range(n_pop): 
-            
             for j in range(3):
                index_list[j] = int(np.random.randint(0,n_pop-1))
                while index_list[j] == k or index_list[j] in index_list[:j]:
@@ -361,24 +464,47 @@ def diff_evolution(function,bounds,n_pop,n_iter,crossover=0.9, weight=0.8):
         obj_counter_track.append(obj_counter)
 
         i += 1
+        
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(agent_fit,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
 
-    return (best_eval, best_coords, object_track, obj_counter_track, timing)
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return [obj_class, object_track, obj_counter_track, timing]
 
 
-def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,error_tol=1e-20):
+def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-6,seed=123):
     """
     This algorithm represents the downhill simplex algorithm
     c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
     Typical values include the following: c_reflect = 1, c_exp = 2, c_cont = 0.5, c_shrnk = 0.5
     error_tol is a stopping criteria which is compared to standard deviation of function values of simplex
     """
-     
-     # Centroid function
+    
+    # Centroid function
     def centroid(arr,dim):
         arr = arr[:-1]
         length = arr.shape[0]
         sum_p = np.array([np.sum(arr[:,k]) for k in range(dim)])
         return sum_p/length
+
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
      
     # Storing solutions
     dim = len(bounds)
@@ -402,16 +528,11 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
     time_start = time.time()
     # Start of algorithm
 
-    while i < n_iter:
+    while i < max_iter:
         # Step 1: Order points according to values of indeces
         sort_order = np.argsort(points_fit)
         points_fit = points_fit[sort_order]
         point_coords = point_coords[sort_order]
-
-        # Calculate standard deviation of function values for simplex
-        deviation = np.std(points_fit)
-        if deviation < error_tol:
-            break
 
         # Step 2: Calculate the centroid
         centroid_coor = centroid(point_coords,dim)
@@ -458,44 +579,103 @@ def dh_simplex(function,bounds,n_iter,c_reflct=1,c_exp=2,c_cont=.5,c_shrnk=.5,er
         obj_counter_track.append(obj_counter)
         i += 1
 
-    return (best_eval, best_coords, object_track, obj_counter_track, timing)
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(points_fit,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, object_track, obj_counter_track, timing)
 
 
-def genetic(function,bounds,survival_percentage,no_points,no_iterations):
+def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5, f_reduction = 15, tol=1e-6, seed=123):
+    
+    """
+    This algorithm represents a novel search space reduction
+    n_glob is the number of global best solutions in the current population
+    f_reduction strikes a balance between exploitation and exploration
+    """
+    
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
 
-    #Initialising variables
-    boundlength = len(bounds)
-    dimensions = list(range(1,boundlength+1))
-    particles = list(range(1,no_points+1))
-    pos = np.zeros((len(particles),len(dimensions)+1))
+    error = 3 # Used to print termination criteria
+
+    # Storing solutions
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
     timing = list()
-    obj_track = list()
-    t_start = time.time()
+    
+    #Parameter initialisation
+    agent_coords = np.array([bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
+    agent_fit = np.apply_along_axis(function,1,agent_coords)
+    best_eval = float('inf')
+    sort_order = np.empty(dim)
+    midpoint = np.empty(dim)
+    range_new = (bounds[:, 1]-bounds[:, 0])/2
+    i = 0
+    time_start = time.time()    
 
-    # First set of points
-    for particle in particles:
-        for dimension in dimensions:
-            pos[particle-1,dimension-1] = random.randrange(round(bounds[dimension-1,0]),round(bounds[dimension-1,1]))
-        pos[particle-1,-1] = function(pos[particle-1,0:-1])
-    pos = np.sort(pos,axis=0)
+    while i <= max_iter:
+        
+        sort_order = np.argsort(agent_fit)
+        agent_fit = agent_fit[sort_order]
+        agent_coords = agent_coords[sort_order]
+        midpoint = np.apply_along_axis(sum,0,agent_coords[:n_glob+1,:])/n_glob
+        range_new *= np.exp(-f_reduction/max_iter)
 
-    # Producing new points and iterating
-    iterations = list(range(1,no_iterations))
-    for iteration in iterations:
-        no_survivors = round(survival_percentage/100*len(pos))
-        pos = pos[0:no_survivors,:]
+        for agent in range(n_pop):
+            num = np.random.rand(dim)
+            if np.random.rand() >= 0.5:
+                agent_coords[agent] = midpoint + num*range_new
+            else:
+                agent_coords[agent] = midpoint - num*range_new
+            
+            if (bounds[:,1] <= agent_coords[agent]).any() or (agent_coords[agent] <= bounds[:,0]).any():
+                agent_coords[agent] = np.array(bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]))
+            
+        
+        agent_fit = np.apply_along_axis(function,1,agent_coords)
+        obj_counter += n_pop
 
-        children = np.zeros((round(len(pos)*100/survival_percentage-no_survivors),len(dimensions)+1))
-        for child in range(round(len(pos)*100/survival_percentage)-no_survivors): 
-            for dimension in dimensions:
-                children[child-1,dimension-1] = np.clip(0.01*random.randrange(-90,110)*random.choice(pos[0:no_survivors,dimension-1]),bounds[dimension-1,0],bounds[dimension-1,1])
+        if min(agent_fit) < best_eval:
+            best_eval = min(agent_fit)
+            best_index = np.argmin(agent_fit)
+            best_coords = agent_coords[best_index]
 
-            children[child-1,-1] = function(children[child-1,0:-1])
+        object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
+        timing.append(time.time()-time_start)
+        i += 1
 
-        pos = np.vstack([children,pos])
-        pos = np.sort(pos,axis=0,)
-        best = pos[0,-1]
-        best_index = pos[0,0:-1]
-        timing.append(time.time()-t_start)
-        obj_track.append(best)
-    return (obj_track, timing, best, best_index)
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(agent_fit,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, object_track, obj_counter_track, timing)
