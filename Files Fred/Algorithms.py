@@ -6,7 +6,7 @@ import math as mt
 import Alg_conditions as AC
 
 
-def sim_annealing(function, bounds, max_iter, max_eval, n=100, t_schedule=1, t_range=[1,0.05], step=1, seed=123):
+def sim_annealing(function, bounds, max_iter, max_eval, n=400, t_schedule=1, t_range=[1,0.05], step=0.5, seed=None):
     """
     This is the algorithm for performing simulated annealing including several cooling schedules
     """
@@ -47,7 +47,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=100, t_schedule=1, t_r
     t_start = time.time()
     j = 0
 
-    while j <= max_iter:    # Outer loop iteration
+    while j < max_iter:    # Outer loop iteration
 
         for _ in range(n):
             config_val = curr_val + np.random.randn(len(bounds)) * step
@@ -88,7 +88,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=100, t_schedule=1, t_r
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 100, parameter = [0.5,0.9,0.5], tol=1e-6, seed=123):
+def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-10, seed=None):
     """
     This is an algorithm for the particle swarm optimisation
     """
@@ -163,7 +163,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 100, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-6, seed=123):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-10, seed=None):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -222,7 +222,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, t
     time_start = time.time()
     i = 0
 
-    while i <= max_iter:
+    while i < max_iter:
 
         # Employer bee phase
         for j in range(n_food):
@@ -266,7 +266,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, t
 
         # Scout phase
         scout_bees = [i for i, v in enumerate(counter) if v > limit]
-
+        
         for k in scout_bees:
             if counter[k] > limit:
                 food_source[k] = bounds[:,0] + np.random.rand(len(bounds)) * (bounds[:,1]-bounds[:,0])
@@ -296,7 +296,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, t
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-6,seed=123):
+def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-10,seed=None):
     
     """
     This is a function which follows the firefly algorithm
@@ -337,7 +337,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     time_start = time.time()
     k = 0
 
-    while k <= max_iter:
+    while k < max_iter:
 
         for i in range(pop_size):
             new_intensity[i] = float('inf')
@@ -391,7 +391,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-6,seed=123):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-10,seed = None):
     
     """
     This is an algorithm representing differential evolution
@@ -482,7 +482,7 @@ def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=
     return [obj_class, object_track, obj_counter_track, timing]
 
 
-def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-6,seed=123):
+def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-10,seed = None):
     """
     This algorithm represents the downhill simplex algorithm
     c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
@@ -596,7 +596,7 @@ def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5, f_reduction = 15, tol=1e-6, seed=123):
+def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5, f_reduction = 15, tol=1e-10, seed= None):
     
     """
     This algorithm represents a novel search space reduction
@@ -632,7 +632,7 @@ def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5
     i = 0
     time_start = time.time()    
 
-    while i <= max_iter:
+    while i < max_iter:
         
         sort_order = np.argsort(agent_fit)
         agent_fit = agent_fit[sort_order]
@@ -679,3 +679,126 @@ def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5
     obj_class.n_feval = obj_counter
 
     return (obj_class, object_track, obj_counter_track, timing)
+
+
+def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 100, n_bits = 16, f_cross = 0.9, n_selection = 3, tol=1e-10, seed = None):
+    """
+    This algorithm implements the genetic algorithm with integer bits
+    f_cross is the crossover operator for mating, n_selection for selecting the number of parents to participate in tournament
+    A 2 point crossover operation is used
+    """
+    
+    # Initialise class 
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
+    # Storing solutions
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
+    timing = list()
+    
+    
+    # Evaluate the mutation operator based on n_bit
+    f_mut = 1/n_bits
+    max_no = 2**n_bits
+    bitstring = n_bits*dim
+
+    # Initialise data
+    pop = np.array([np.random.randint(0,2,bitstring).tolist() for _ in range(n_pop)])
+    pop_float = np.empty((n_pop,dim))
+    eval_pop = np.empty(n_pop)
+    time_start = time.time()
+
+    i = 0
+
+    while i < max_iter:
+
+        # Converting bits to floats within bounds
+        str_array = [''.join(map(str,pop[k])) for k in range(n_pop)]
+        for j in range(n_pop):
+            string = str_array[j]
+            for k in range(dim):
+                start,end = k * n_bits, (k * n_bits) + n_bits
+                sub_string = string[start:end]
+                integer = int(sub_string, 2)
+                store_val = bounds[k,0] + (integer/max_no)* (bounds[k,1]- bounds[k,0])
+                pop_float[j,k] = store_val
+        
+        # Evaluate objective function
+        eval_pop = np.apply_along_axis(function,1,pop_float)
+
+        # Record best solution
+        if min(eval_pop) < best_eval:
+            best_eval = min(eval_pop)
+            best_index = np.argmin(best_eval)
+            best_coords = pop_float[best_index]
+
+        # Store solution
+        obj_counter += n_pop
+        object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
+        timing.append(time.time()-time_start)
+
+        # Select parents in tournament
+        parents = np.empty((n_pop,bitstring),dtype=int)
+        for j in range(n_pop):
+            idx_parent = np.random.randint(0,n_pop)
+            for idx in np.random.randint(0,n_pop,n_selection-1):
+                if eval_pop[idx] < eval_pop[idx_parent]:
+                    idx_parent = idx
+            
+            parents[j,:] = pop[idx_parent]
+        
+        # Perform mating to produce offspring
+        children = np.empty((n_pop,bitstring),dtype=int)
+        for j in range(0,n_pop,2):
+            parent1,parent2 = parents[j],parents[j+1]
+            child1,child2 = parent1,parent2
+            if np.random.rand()< f_cross:
+                cp1 = np.random.randint(1,bitstring-2)
+                cp2 = np.random.randint(1,bitstring-2)
+                while cp1 == cp2:
+                    cp2 = np.random.randint(1,(dim*n_bits)-2)
+                cp = [cp1,cp2]
+                cp.sort()
+                child1 = np.concatenate((parent1[:cp[0]],parent2[cp[0]:cp[1]],parent1[cp[1]:]))
+                child2 = np.concatenate((parent2[:cp[0]], parent1[cp[0]:cp[1]], parent2[cp[1]:]))
+
+            # Mutations for children
+            for k in range(bitstring):
+                if np.random.rand() < f_mut:
+                    # Flipping the bits in string
+                    child1[k],child2[k] = 1 - child1[k], 1 - child2[k]
+            
+            children[j:j+2] = [child1,child2].copy()
+
+        pop = children
+        i += 1
+
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(eval_pop,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, object_track, obj_counter_track, timing)
+                    
+                
