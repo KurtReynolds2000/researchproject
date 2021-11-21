@@ -163,7 +163,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-20, seed=None):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=300, limit=10, tol=1e-20, seed=None):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -391,7 +391,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-20,seed = None):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0.9, weight=0.8, tol=1e-20,seed = None):
     
     """
     This is an algorithm representing differential evolution
