@@ -2,7 +2,7 @@ import numpy as np
 import time
 from math import exp
 import math as mt
-
+import random
 import Alg_conditions as AC
 
 
@@ -88,7 +88,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=400, t_schedule=1, t_r
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-10, seed=None):
+def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-20, seed=None):
     """
     This is an algorithm for the particle swarm optimisation
     """
@@ -163,7 +163,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-10, seed=None):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, tol=1e-20, seed=None):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -296,7 +296,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=10, t
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-10,seed=None):
+def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-20,seed=None):
     
     """
     This is a function which follows the firefly algorithm
@@ -391,7 +391,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-10,seed = None):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=0.9, weight=0.8, tol=1e-20,seed = None):
     
     """
     This is an algorithm representing differential evolution
@@ -482,7 +482,7 @@ def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 100, crossover=
     return [obj_class, object_track, obj_counter_track, timing]
 
 
-def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-10,seed = None):
+def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-20,seed = None):
     """
     This algorithm represents the downhill simplex algorithm
     c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
@@ -596,7 +596,7 @@ def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5, f_reduction = 15, tol=1e-10, seed= None):
+def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5, f_reduction = 15, tol=1e-20, seed= None):
     
     """
     This algorithm represents a novel search space reduction
@@ -681,12 +681,25 @@ def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5,
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 100, n_bits = 16, f_cross = 0.9, n_selection = 3, tol=1e-10, seed = None):
+def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 3, p_chld = 1, eta = 5, f_mut = 0.1, sigma = 0.8, tol=1e-20, seed = None):
     """
     This algorithm implements the genetic algorithm with integer bits
-    f_cross is the crossover operator for mating, n_selection for selecting the number of parents to participate in tournament
-    A 2 point crossover operation is used
+
+    n_selection for selecting the number of parents to participate in tournament
+    p_chld is a multiplier to size pop of children
+    f_mut is the mutation rate
+    sigma is the standard deviation of mutation step
+    crossover is performed by the simulated binary operator (SBX)
+    eta is the user defined distribution in the SBX operator
     """
+
+    # Mutation helper function
+    def mutation(x,f_mut,sigma):
+        store = np.random.rand(*x.shape) <= f_mut
+        indeces = np.argwhere(store)
+        x[indeces] += sigma*np.random.randn(*indeces.shape)
+        x = np.clip(x,bounds[:,0], bounds[:,1]) # Ensuring that children are not out of bounds
+        return x
     
     # Initialise class 
     obj_class = AC.opt_solver(len(bounds))
@@ -707,41 +720,85 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 100, n_bits = 16, 
     obj_counter_track = list()
     timing = list()
     
-    
-    # Evaluate the mutation operator based on n_bit
-    f_mut = 1/n_bits
-    max_no = 2**n_bits
-    bitstring = n_bits*dim
 
     # Initialise data
-    pop = np.array([np.random.randint(0,2,bitstring).tolist() for _ in range(n_pop)])
-    pop_float = np.empty((n_pop,dim))
-    eval_pop = np.empty(n_pop)
+    pop = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
+    pop_eval = np.apply_along_axis(function,1,pop)
+    n_chld = int(n_pop*p_chld/2)*2
     time_start = time.time()
 
     i = 0
 
     while i < max_iter:
 
-        # Converting bits to floats within bounds
-        str_array = [''.join(map(str,pop[k])) for k in range(n_pop)]
-        for j in range(n_pop):
-            string = str_array[j]
-            for k in range(dim):
-                start,end = k * n_bits, (k * n_bits) + n_bits
-                sub_string = string[start:end]
-                integer = int(sub_string, 2)
-                store_val = bounds[k,0] + (integer/max_no)* (bounds[k,1]- bounds[k,0])
-                pop_float[j,k] = store_val
-        
-        # Evaluate objective function
-        eval_pop = np.apply_along_axis(function,1,pop_float)
+        # Select parents in tournament and perform crossover by SBX operator
+        children = np.empty((n_chld,dim))
+        children_eval = np.empty(n_chld)
 
-        # Record best solution
-        if min(eval_pop) < best_eval:
-            best_eval = min(eval_pop)
-            best_index = np.argmin(best_eval)
-            best_coords = pop_float[best_index]
+        for j in range(0,n_chld,2):
+            idx_p1 = np.random.randint(0,n_pop)
+            
+            for idx1 in random.sample(range(0,n_pop),n_selection):
+                if pop_eval[idx1] < pop_eval[idx_p1]:
+                    idx_p1 = idx1
+            
+            idx_p2 = np.random.randint(0,n_pop)
+            while idx_p2 == idx_p1:
+                idx_p2 = np.random.randint(0,n_pop)
+
+            p1,p2= pop[idx_p1],pop[idx_p2]
+           
+            # SBX operator
+            beta = np.array([(2*mu)**(1/(eta+1)) if mu < 0.5 else (1/(2*(1-mu)))**(1/(eta+1)) for mu in np.random.rand(dim)])
+            c1 = 0.5*((p1+p2)-beta*abs(p2-p1))
+            c2 = 0.5*((p1+p2)+beta*abs(p2-p1))
+
+            # Perform mutation on children
+            c1 = mutation(c1,f_mut,sigma)
+            c2 = mutation(c2,f_mut,sigma)
+            c = [c1,c2]
+
+            # Evaluate children
+            eval_c1,eval_c2 = function(c1),function(c2)
+            eval_c = [eval_c1,eval_c2]
+            obj_counter += 2
+            children[j:j+2,:] = [c1,c2]
+            children_eval[j:j+2] = [eval_c1,eval_c2]
+
+            # Record best solution
+            if min(eval_c) < best_eval:
+                best_eval = min(eval_c)
+                best_index = np.argmin(eval_c)
+                best_coords = c[best_index]
+
+            # Store solution
+            obj_counter += n_pop
+            object_track.append(best_eval)
+            obj_counter_track.append(obj_counter)
+            timing.append(time.time()-time_start)
+            
+    
+        # Merge children and parents, sort and reduce
+        merge_pop = np.concatenate((pop,children))
+        merge_eval = np.concatenate((pop_eval,children_eval))
+        sort_order = np.argsort(merge_eval)
+        merge_eval = merge_eval[sort_order]
+        merge_pop = merge_pop[sort_order]
+        
+        # Kill 5% and add new points
+        size = int(0.05*n_pop)
+        obj_counter += size
+        new_pop = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(int(0.05*n_pop))])
+        new_eval = np.apply_along_axis(function,1,new_pop)
+        pop = np.concatenate((merge_pop[0:n_pop-size],new_pop))
+        pop_eval = np.concatenate((merge_eval[0:n_pop-size],new_eval))
+        
+        
+        # Update solutions
+        if min(new_eval) < best_eval:
+            best_eval = min(new_eval)
+            best_index = np.argmin(new_eval)
+            best_coords = new_pop[best_index]
 
         # Store solution
         obj_counter += n_pop
@@ -749,44 +806,10 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 100, n_bits = 16, 
         obj_counter_track.append(obj_counter)
         timing.append(time.time()-time_start)
 
-        # Select parents in tournament
-        parents = np.empty((n_pop,bitstring),dtype=int)
-        for j in range(n_pop):
-            idx_parent = np.random.randint(0,n_pop)
-            for idx in np.random.randint(0,n_pop,n_selection-1):
-                if eval_pop[idx] < eval_pop[idx_parent]:
-                    idx_parent = idx
-            
-            parents[j,:] = pop[idx_parent]
-        
-        # Perform mating to produce offspring
-        children = np.empty((n_pop,bitstring),dtype=int)
-        for j in range(0,n_pop,2):
-            parent1,parent2 = parents[j],parents[j+1]
-            child1,child2 = parent1,parent2
-            if np.random.rand()< f_cross:
-                cp1 = np.random.randint(1,bitstring-2)
-                cp2 = np.random.randint(1,bitstring-2)
-                while cp1 == cp2:
-                    cp2 = np.random.randint(1,(dim*n_bits)-2)
-                cp = [cp1,cp2]
-                cp.sort()
-                child1 = np.concatenate((parent1[:cp[0]],parent2[cp[0]:cp[1]],parent1[cp[1]:]))
-                child2 = np.concatenate((parent2[:cp[0]], parent1[cp[0]:cp[1]], parent2[cp[1]:]))
-
-            # Mutations for children
-            for k in range(bitstring):
-                if np.random.rand() < f_mut:
-                    # Flipping the bits in string
-                    child1[k],child2[k] = 1 - child1[k], 1 - child2[k]
-            
-            children[j:j+2] = [child1,child2].copy()
-
-        pop = children
         i += 1
 
         # Check for convergence or if max feval has been exceeded
-        if AC.opt_converge(eval_pop,tol):
+        if AC.opt_converge(pop_eval,tol):
             error = 1
             break
         elif max_eval <= obj_counter:
@@ -800,5 +823,4 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 100, n_bits = 16, 
     obj_class.n_feval = obj_counter
 
     return (obj_class, object_track, obj_counter_track, timing)
-                    
                 
