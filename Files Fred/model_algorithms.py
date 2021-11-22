@@ -17,7 +17,7 @@ abs_path = (os.path.abspath(os.path.join(os.path.dirname(__file__),'..','DeepDoc
 ident = "1z6e"
 protein_id = ident + "_protein.ply"
 ligand_id = ident + "_ligand.mol2"
-csv_id = ident + "_target.csv"
+csv_id = ident + "_trial.csv"
 
 
 # Specify the ligand and target to optimise 
