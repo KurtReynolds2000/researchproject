@@ -6,7 +6,7 @@ import random
 import Alg_conditions as AC
 
 
-def sim_annealing(function, bounds, max_iter, max_eval, n=400, t_schedule=1, t_range=[1,0.05], step=0.5, seed=None):
+def sim_annealing(function, bounds, max_iter, max_eval, n=200, t_schedule=1, t_range=[1,0.05], step=0.5, seed=None):
     """
     This is the algorithm for performing simulated annealing including several cooling schedules
     """
@@ -163,7 +163,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=300, limit=10, tol=1e-20, seed=None):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, tol=1e-20, seed=123):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -239,8 +239,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=300, limit=10, t
                 counter[j] += 1
 
         # Calculating probablities
-        trial_prob = [1-food_fit[k]/sum(food_fit) for k in range(n_food)]
-        trial_prob = [i/sum(trial_prob) for i in trial_prob]
+        trial_prob = [food_fit[k]/sum(food_fit) for k in range(n_food)]
         indeces = np.random.choice([i for i in range(n_food)], size=n_food, p=trial_prob)
 
         # Onlooker bee phase
@@ -279,6 +278,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=300, limit=10, t
         object_track.append(best_eval)
         obj_counter_track.append(obj_counter)
         i += 1
+
         # Check for convergence or if max feval has been exceeded
         if AC.opt_converge(food_eval,tol):
             error = 1
@@ -391,7 +391,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0.9, weight=0.8, tol=1e-20,seed = None):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0.9, weight=0.4, tol=1e-20,seed = None):
     
     """
     This is an algorithm representing differential evolution
@@ -681,7 +681,7 @@ def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5,
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 3, p_chld = 1, eta = 5, f_mut = 0.1, sigma = 0.8, tol=1e-20, seed = None):
+def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 2, p_chld = 2, eta = 8, f_mut = 0.1, sigma = 0.8, tol=1e-20, seed = None):
     """
     This algorithm implements the genetic algorithm with integer bits
 
@@ -772,7 +772,6 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection =
                 best_coords = c[best_index]
 
             # Store solution
-            obj_counter += n_pop
             object_track.append(best_eval)
             obj_counter_track.append(obj_counter)
             timing.append(time.time()-time_start)
@@ -784,8 +783,9 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection =
         sort_order = np.argsort(merge_eval)
         merge_eval = merge_eval[sort_order]
         merge_pop = merge_pop[sort_order]
+        print(best_eval)
         
-        # Kill 5% and add new points
+        # Kill 5% by probability and add new points
         size = int(0.05*n_pop)
         obj_counter += size
         new_pop = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(int(0.05*n_pop))])

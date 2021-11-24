@@ -17,7 +17,7 @@ abs_path = (os.path.abspath(os.path.join(os.path.dirname(__file__),'..','DeepDoc
 ident = "1z6e"
 protein_id = ident + "_protein.ply"
 ligand_id = ident + "_ligand.mol2"
-csv_id = ident + "_trial.csv"
+csv_id = ident + "_target.csv"
 
 
 # Specify the ligand and target to optimise 
@@ -53,13 +53,14 @@ class save_csv():
         df_rates = pd.DataFrame.from_dict(self.data)
         df_rates.to_csv(self.csv_id,index=False) 
 
-my_algorithms = {"SA":sim_annealing,"PSO":particle_swarm,"ABC":artificial_bee,"Firefly":firefly_alg,"DE":diff_evolution,"SMPLX":dh_simplex,"GA":genetic_alg}
+my_algorithms = {"ABC":artificial_bee}
 
 save_data = save_csv(csv_id)
 for name,alg in my_algorithms.items():
     algorithm = my_algorithms[name]
     print("running")
-    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=None,device=device)
+    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=None,device=device,maxfeval=15000)
+    print(result.feval[-1])
     save_data.prepare_data(result,name)
 
 save_data.store_data()
