@@ -75,3 +75,11 @@ def Goldstein(x):
     term_2 = (30+(2*X-3*Y)**2*(18-32*X+12*X**2+48*Y-36*X*Y+27*Y**2))
 
     return term_1*term_2
+
+def Michalewitz(x):
+    X = list([len(x)])
+    m = 10
+    for i in range(0,len(x)):
+        X[i] = mt.sin(x[i])*mt.sin(i*x[i]**2/mt.pi)**(2*m)
+
+    return -sum(X)
