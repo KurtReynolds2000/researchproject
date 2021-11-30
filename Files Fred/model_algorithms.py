@@ -4,6 +4,7 @@ import deepdock
 from deepdock.models import *
 from deepdock.DockingFunction import dock_compound_research, dock_compound_research
 from Algorithms import *
+from hybrid_algorithms import *
 
 import numpy as np
 import torch
@@ -30,7 +31,8 @@ real_mol = Chem.MolFromMol2File(os.path.join(abs_path,ligand_id),sanitize=False,
 np.random.seed(123)
 torch.cuda.manual_seed_all(123)
 
-# Defining DeepDock model to use
+# Def
+# ining DeepDock model to use
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -53,14 +55,14 @@ class save_csv():
         df_rates = pd.DataFrame.from_dict(self.data)
         df_rates.to_csv(self.csv_id,index=False) 
 
-my_algorithms = {"ABC":artificial_bee}
+my_algorithms = {"ABC":mayfly_alg}
 
 save_data = save_csv(csv_id)
 for name,alg in my_algorithms.items():
     algorithm = my_algorithms[name]
     print("running")
-    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=None,device=device,maxfeval=15000)
+    result = dock_compound_research(real_mol, target_ply, model, algorithm, seed=123,device=device,maxfeval=50000)
     print(result.feval[-1])
     save_data.prepare_data(result,name)
 
-save_data.store_data()
+save_data.store_data()           

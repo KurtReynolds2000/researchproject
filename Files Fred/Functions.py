@@ -77,9 +77,16 @@ def Goldstein(x):
     return term_1*term_2
 
 def Michalewitz(x):
-    X = list([len(x)])
     m = 10
-    for i in range(0,len(x)):
-        X[i] = mt.sin(x[i])*mt.sin(i*x[i]**2/mt.pi)**(2*m)
+    z = 0
+    for i in range(len(x)):
+        z += mt.sin(x[i])*mt.sin((i+1)*x[i]**2/mt.pi)**(2*m)
+    return -z    
 
-    return -sum(X)
+
+def Easom(x):
+    x1 = x[0]
+    x2 = x[1]
+    term1 = -mt.cos(x1)*mt.cos(x2)
+    term2 = mt.exp(-(x1-mt.pi)**2 - (x2-mt.pi)**2)
+    return term1*term2

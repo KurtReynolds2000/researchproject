@@ -6,7 +6,7 @@ import random
 import Alg_conditions as AC
 
 
-def sim_annealing(function, bounds, max_iter, max_eval, n=200, t_schedule=1, t_range=[1,0.05], step=0.5, seed=None):
+def sim_annealing(function, bounds, max_iter, max_eval, n=50, t_schedule=1, t_range=[1,0.05], step=1, seed=None):
     """
     This is the algorithm for performing simulated annealing including several cooling schedules
     """
@@ -51,6 +51,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=200, t_schedule=1, t_r
 
         for _ in range(n):
             config_val = curr_val + np.random.randn(len(bounds)) * step
+            config_val = np.clip(config_val,bounds[:,0],bounds[:,1])
             config_eval = function(config_val)
             obj_counter += 1
 
@@ -88,7 +89,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=200, t_schedule=1, t_r
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-20, seed=None):
+def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-50, seed=None):
     """
     This is an algorithm for the particle swarm optimisation
     """
@@ -163,7 +164,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, tol=1e-20, seed=123):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, tol=1e-50, seed=123):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -296,7 +297,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, t
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-20,seed=None):
+def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, betamin=1.0, gamma=0.01, tol=1e-50,seed=None):
     
     """
     This is a function which follows the firefly algorithm
@@ -391,7 +392,7 @@ def firefly_alg(function, bounds, max_iter, max_eval, pop_size=25, alpha=1.0, be
     return (obj_class, obj_track, obj_counter_track, timing)
 
 
-def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0.9, weight=0.4, tol=1e-20,seed = None):
+def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0.9, weight=0.3, tol=1e-50,seed = None):
     
     """
     This is an algorithm representing differential evolution
@@ -447,6 +448,8 @@ def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0
                     agent_store[j] = a[j] + weight* (b[j] - c[j])
                 else:
                     agent_store[j] = agent_coords[k,j]
+                
+            agent_store= np.clip(agent_store,bounds[:,0],bounds[:,1])
 
             agent_eval = function(agent_store)
             obj_counter += 1
@@ -482,206 +485,7 @@ def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0
     return [obj_class, object_track, obj_counter_track, timing]
 
 
-def dh_simplex(function, bounds, max_iter, max_eval, c_reflct=1, c_exp=2, c_cont=.5, c_shrnk=.5, tol=1e-20,seed = None):
-    """
-    This algorithm represents the downhill simplex algorithm
-    c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
-    Typical values include the following: c_reflect = 1, c_exp = 2, c_cont = 0.5, c_shrnk = 0.5
-    error_tol is a stopping criteria which is compared to standard deviation of function values of simplex
-    """
-    
-    # Centroid function
-    def centroid(arr,dim):
-        arr = arr[:-1]
-        length = arr.shape[0]
-        sum_p = np.array([np.sum(arr[:,k]) for k in range(dim)])
-        return sum_p/length
-
-    obj_class = AC.opt_solver(len(bounds))
-    obj_class.set_seed(seed)
-    try:
-        int(max_iter + max_eval)
-    except:
-        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
-
-    error = 3 # Used to print termination criteria
-     
-    # Storing solutions
-    dim = len(bounds)
-    n_points = dim + 1
-    best_coords = np.empty(dim)
-    best_eval = float('inf')
-    object_track = list()
-    obj_counter = 0
-    obj_counter_track = list()
-    timing = list()
-    
-    #Parameter initialisation
-    point_coords = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_points)])
-    points_fit = np.apply_along_axis(function,1,point_coords)
-    centroid_coor = np.empty(dim)
-    x_reflct = np.empty(dim)
-    x_exp = np.empty(dim)
-    x_cont = np.empty(dim)
-    sort_order = np.empty(dim+1)
-    i = 0
-    time_start = time.time()
-    # Start of algorithm
-
-    while i < max_iter:
-        # Step 1: Order points according to values of indeces
-        sort_order = np.argsort(points_fit)
-        points_fit = points_fit[sort_order]
-        point_coords = point_coords[sort_order]
-
-        # Step 2: Calculate the centroid
-        centroid_coor = centroid(point_coords,dim)
-
-        # Step 3: Reflection / Expansion / Contraction / Shrinking
-        x_reflct = centroid_coor + c_reflct* (centroid_coor - point_coords[-1])
-        reflct_eval = function(x_reflct)
-        obj_counter += 1
-
-        if points_fit[0] <= reflct_eval <= points_fit[-2]: # Reflection
-           points_fit[-1] = reflct_eval
-           point_coords[-1] = x_reflct
-        elif reflct_eval < points_fit[0]: # Expansion
-            x_exp = centroid_coor + c_exp* (x_reflct-centroid_coor)
-            exp_eval = function(x_exp)
-            obj_counter += 1
-            if exp_eval < reflct_eval:
-                points_fit[-1] = exp_eval
-                point_coords[-1] = x_exp
-            else:
-                points_fit[-1] = reflct_eval
-                point_coords[-1] = x_reflct
-        else: # Contraction
-           x_cont = centroid_coor + c_cont*(point_coords[-1]-centroid_coor)
-           cont_eval = function(x_cont)
-           obj_counter += 1
-           if cont_eval < points_fit[-1]:
-                points_fit[-1] = cont_eval
-                point_coords[-1] = x_cont
-           else: # Shrinking
-               best_point = point_coords[0]
-               for j in range(1,dim):
-                  point_coords[j] = best_point + c_shrnk* (point_coords[j]-best_point)
-                  points_fit[j] = function(point_coords[j])
-                  obj_counter += 1
-        
-        # Get the best point
-        if points_fit[0] < best_eval:
-            best_eval = points_fit[0]
-            best_coords = point_coords[0]
-        
-        object_track.append(best_eval)
-        timing.append(time.time()-time_start)
-        obj_counter_track.append(obj_counter)
-        i += 1
-
-        # Check for convergence or if max feval has been exceeded
-        if AC.opt_converge(points_fit,tol):
-            error = 1
-            break
-        elif max_eval <= obj_counter:
-            error = 2
-            break
-
-    obj_class.xarray = best_coords
-    obj_class.set_message(error)
-    obj_class.eval = best_eval
-    obj_class.n_iter = i
-    obj_class.n_feval = obj_counter
-
-    return (obj_class, object_track, obj_counter_track, timing)
-
-
-def space_reduction(function, bounds, max_iter, max_eval,n_pop = 50, n_glob = 5, f_reduction = 15, tol=1e-20, seed= None):
-    
-    """
-    This algorithm represents a novel search space reduction
-    n_glob is the number of global best solutions in the current population
-    f_reduction strikes a balance between exploitation and exploration
-    """
-    
-    obj_class = AC.opt_solver(len(bounds))
-    obj_class.set_seed(seed)
-    try:
-        int(max_iter + max_eval)
-    except:
-        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
-
-    error = 3 # Used to print termination criteria
-
-    # Storing solutions
-    dim = len(bounds)
-    best_coords = np.empty(dim)
-    best_eval = float('inf')
-    object_track = list()
-    obj_counter = 0
-    obj_counter_track = list()
-    timing = list()
-    
-    #Parameter initialisation
-    agent_coords = np.array([bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
-    agent_fit = np.apply_along_axis(function,1,agent_coords)
-    best_eval = float('inf')
-    sort_order = np.empty(dim)
-    midpoint = np.empty(dim)
-    range_new = (bounds[:, 1]-bounds[:, 0])/2
-    i = 0
-    time_start = time.time()    
-
-    while i < max_iter:
-        
-        sort_order = np.argsort(agent_fit)
-        agent_fit = agent_fit[sort_order]
-        agent_coords = agent_coords[sort_order]
-        midpoint = np.apply_along_axis(sum,0,agent_coords[:n_glob+1,:])/n_glob
-        range_new *= np.exp(-f_reduction/max_iter)
-
-        for agent in range(n_pop):
-            num = np.random.rand(dim)
-            if np.random.rand() >= 0.5:
-                agent_coords[agent] = midpoint + num*range_new
-            else:
-                agent_coords[agent] = midpoint - num*range_new
-            
-            if (bounds[:,1] <= agent_coords[agent]).any() or (agent_coords[agent] <= bounds[:,0]).any():
-                agent_coords[agent] = np.array(bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]))
-            
-        
-        agent_fit = np.apply_along_axis(function,1,agent_coords)
-        obj_counter += n_pop
-
-        if min(agent_fit) < best_eval:
-            best_eval = min(agent_fit)
-            best_index = np.argmin(agent_fit)
-            best_coords = agent_coords[best_index]
-
-        object_track.append(best_eval)
-        obj_counter_track.append(obj_counter)
-        timing.append(time.time()-time_start)
-        i += 1
-
-        # Check for convergence or if max feval has been exceeded
-        if AC.opt_converge(agent_fit,tol):
-            error = 1
-            break
-        elif max_eval <= obj_counter:
-            error = 2
-            break
-
-    obj_class.xarray = best_coords
-    obj_class.set_message(error)
-    obj_class.eval = best_eval
-    obj_class.n_iter = i
-    obj_class.n_feval = obj_counter
-
-    return (obj_class, object_track, obj_counter_track, timing)
-
-
-def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 2, p_chld = 2, eta = 8, f_mut = 0.1, sigma = 0.8, tol=1e-20, seed = None):
+def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 3, p_chld = 2, eta = 0.2, f_mut = 0.01, sigma = 0.8, tol=1e-50, seed = None):
     """
     This algorithm implements the genetic algorithm with integer bits
 
@@ -783,7 +587,7 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection =
         sort_order = np.argsort(merge_eval)
         merge_eval = merge_eval[sort_order]
         merge_pop = merge_pop[sort_order]
-        print(best_eval)
+
         
         # Kill 5% by probability and add new points
         size = int(0.05*n_pop)
@@ -824,3 +628,178 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection =
 
     return (obj_class, object_track, obj_counter_track, timing)
                 
+
+def dh_simplex(function, point, bounds, max_iter, c_reflct=1, c_exp= 1.2, c_cont=.3, c_shrnk=.3, tol=5e-4, seed = None):
+    """
+    This algorithm represents the downhill simplex algorithm
+    c_reflct, c_exp, c_cont, c_shrink are the reflection, expansion, contraction and shrink coefficients
+    Typical values include the following: c_reflect = 1, c_exp = 2, c_cont = 0.5, c_shrnk = 0.5
+    error_tol is a stopping criteria which is compared to standard deviation of function values of simplex
+    """
+
+    np.random.default_rng(seed)
+    # Centroid function
+    def centroid(arr,dim):
+        arr = arr[:-1]
+        length = arr.shape[0]
+        sum_p = np.array([np.sum(arr[:,k]) for k in range(dim)])
+        return sum_p/length
+
+     
+    # Storing solutions
+    dim = len(bounds)
+    n_points = dim + 1
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    obj_counter = 0
+   
+    
+    #Parameter initialisation
+    point_coords = np.array([point + np.random.uniform(-0.1,0.1,size=dim)* 0.1*(bounds[:,1]-bounds[:,0]) for _ in range(n_points)])
+    point_coords[0] = point
+    points_fit = np.apply_along_axis(function,1,point_coords)
+    centroid_coor = np.empty(dim)
+    x_reflct = np.empty(dim)
+    x_exp = np.empty(dim)
+    x_cont = np.empty(dim)
+    sort_order = np.empty(dim+1)
+    i = 0
+    # Start of algorithm
+
+    while i < max_iter:
+        # Step 1: Order points according to values of indeces
+        sort_order = np.argsort(points_fit)
+        points_fit = points_fit[sort_order]
+        point_coords = point_coords[sort_order]
+
+        # Step 2: Calculate the centroid
+        centroid_coor = centroid(point_coords,dim)
+
+        # Step 3: Reflection / Expansion / Contraction / Shrinking
+        x_reflct = centroid_coor + c_reflct* (centroid_coor - point_coords[-1])
+        reflct_eval = function(x_reflct)
+        obj_counter += 1
+
+        if points_fit[0] <= reflct_eval <= points_fit[-2]: # Reflection
+           points_fit[-1] = reflct_eval
+           point_coords[-1] = x_reflct
+        elif reflct_eval < points_fit[0]: # Expansion
+            x_exp = centroid_coor + c_exp* (x_reflct-centroid_coor)
+            exp_eval = function(x_exp)
+            obj_counter += 1
+            if exp_eval < reflct_eval:
+                points_fit[-1] = exp_eval
+                point_coords[-1] = x_exp
+            else:
+                points_fit[-1] = reflct_eval
+                point_coords[-1] = x_reflct
+        else: # Contraction
+           x_cont = centroid_coor + c_cont*(point_coords[-1]-centroid_coor)
+           cont_eval = function(x_cont)
+           obj_counter += 1
+           if cont_eval < points_fit[-1]:
+                points_fit[-1] = cont_eval
+                point_coords[-1] = x_cont
+           else: # Shrinking
+               best_point = point_coords[0]
+               for j in range(1,dim):
+                  point_coords[j] = best_point + c_shrnk* (point_coords[j]-best_point)
+                  points_fit[j] = function(point_coords[j])
+                  obj_counter += 1
+        
+        # Get the best point
+        if points_fit[0] < best_eval:
+            best_eval = points_fit[0]
+            best_coords = point_coords[0]
+        
+        i += 1
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(points_fit[:-1],tol):
+            break
+
+    return (best_eval,best_coords,obj_counter)
+
+
+def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5, f_reduction = 15, tol=1e-50, seed= None):
+    
+    """
+    This algorithm represents a novel search space reduction
+    n_glob is the number of global best solutions in the current population
+    f_reduction strikes a balance between exploitation and exploration
+    """
+    
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
+    # Storing solutions
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
+    timing = list()
+    
+    #Parameter initialisation
+    agent_coords = np.array([bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
+    agent_fit = np.apply_along_axis(function,1,agent_coords)
+    best_eval = float('inf')
+    sort_order = np.empty(dim)
+    midpoint = np.empty(dim)
+    range_new = (bounds[:, 1]-bounds[:, 0])/2
+    i = 0
+    time_start = time.time()    
+
+    while i < max_iter:
+        
+        sort_order = np.argsort(agent_fit)
+        agent_fit = agent_fit[sort_order]
+        agent_coords = agent_coords[sort_order]
+        midpoint = np.apply_along_axis(sum,0,agent_coords[:n_glob+1,:])/n_glob
+        range_new *= np.exp(-f_reduction/max_iter)
+
+        for agent in range(n_pop):
+            num = np.random.rand(dim)
+            if np.random.rand() >= 0.5:
+                agent_coords[agent] = midpoint + num*range_new
+            else:
+                agent_coords[agent] = midpoint - num*range_new
+            
+            if (bounds[:,1] <= agent_coords[agent]).any() or (agent_coords[agent] <= bounds[:,0]).any():
+                agent_coords[agent] = np.array(bounds[:, 0] + np.random.rand(dim)* (bounds[:, 1] - bounds[:, 0]))
+            
+        
+        agent_fit = np.apply_along_axis(function,1,agent_coords)
+        obj_counter += n_pop
+
+        if min(agent_fit) < best_eval:
+            best_eval = min(agent_fit)
+            best_index = np.argmin(agent_fit)
+            best_coords = agent_coords[best_index]
+
+        object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
+        timing.append(time.time()-time_start)
+        i += 1
+
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(agent_fit,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+
+    return (obj_class, object_track, obj_counter_track, timing)

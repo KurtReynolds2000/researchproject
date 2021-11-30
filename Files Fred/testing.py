@@ -2,40 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Functions as fun
 import Algorithms as alg
+import hybrid_algorithms as hyb
+from scipy.optimize import differential_evolution
 
-bounds = np.asarray([[-2, 2]]*2)
+bounds = np.asarray([[-10,10]]*10)
 dimension = len(bounds)
-de_evals = 1000
+max_eval = 100000
 
-runs = 10
-de_timings, de_objs = np.ndarray([runs,20]), np.ndarray([runs,20])
-
-
-
-for run in range(runs):
-    [obj_class, obj_track, obj_eval, timing] = alg.diff_evolution(fun.Goldstein, bounds, 2000, de_evals,50,0.9,0.8,1e-20)
-    de_objs[run,:] = obj_track
-    de_timings[run,:] = timing
-    print("running")
+function = fun.Rastrigin
+np.set_printoptions(precision=4)
 
 
-de_std = np.ndarray([len(de_objs[0,:])])
-de_timing = np.ndarray([len(de_objs[0,:])])
-de_mean = np.ndarray([len(de_objs[0,:])])
-
-de_mean = np.apply_along_axis(np.mean,0,de_objs)
-de_timing = np.apply_along_axis(np.mean,0,de_timings)
-de_std = np.apply_along_axis(np.std,0,de_objs)
-
-plt.plot(de_timing,de_mean)
-#plt.plot(sa_mean,sa_timing)
+[obj_class, obj_track, obj_eval, timing] = hyb.mayfly_alg(function, bounds, max_eval, max_eval)
+best_eval = obj_class.eval
+best_val = obj_class.xarray
+print("{:.5f}".format(best_eval), best_val,obj_class.message)
+plt.plot(obj_eval, obj_track)
 plt.yscale('log')
-plt.xlabel("Time")
-#plt.xlim((0,10))
-plt.fill_between(de_timing, de_mean-de_std, de_mean+de_std, alpha=0.2)
-#plt.fill_between(sa_mean, -sa_std, sa_std, alpha=0.2)
-plt.ylim((0.8, 10e2))
+plt.xlabel("Objective Function Evaluation")
+plt.ylim((10e-4,10e4))
 plt.ylabel("Objective Function")
-plt.legend(["DE","SA"])
-plt.title(f' Objective Function vs Time for {dimension} Dimensions')
 plt.show()
