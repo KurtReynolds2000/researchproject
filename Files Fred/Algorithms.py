@@ -6,7 +6,7 @@ import random
 import Alg_conditions as AC
 
 
-def sim_annealing(function, bounds, max_iter, max_eval, n=50, t_schedule=1, t_range=[1,0.05], step=1, seed=None):
+def sim_annealing(function, bounds, max_iter, max_eval, n=200, t_schedule=1, t_range=[1,0.05], step=1, seed=None):
     """
     This is the algorithm for performing simulated annealing including several cooling schedules
     """
@@ -89,7 +89,7 @@ def sim_annealing(function, bounds, max_iter, max_eval, n=50, t_schedule=1, t_ra
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, parameter = [0.5,0.9,0.5], tol=1e-50, seed=None):
+def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 200, parameter = [0.5,0.9,0.5], tol=1e-50, seed=None):
     """
     This is an algorithm for the particle swarm optimisation
     """
@@ -107,7 +107,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     w, c_1, c_2 = parameter[0], parameter[1], parameter[2]
     # Initialise individual particle properties
     part_position = np.empty([n_particles, len(bounds)])
-    part_velocity = part_position
+    part_velocity = part_position.copy()
     obj_track = list()
     obj_counter = 0
     obj_counter_track = list()
@@ -116,7 +116,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     for particle in range(n_particles):
         part_position[particle] = bounds[:, 0] + np.random.rand(len(bounds)) * (bounds[:, 1] - bounds[:, 0])
 
-    part_bposition = part_position
+    part_bposition = part_position.copy()
     part_beval = np.array([float('inf') for _ in range(n_particles)])
 
     group_position = np.array([float('inf') for _ in range(len(bounds))])
@@ -140,6 +140,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
 
             part_velocity[k] = w * part_velocity[k] + c_1 * np.random.random() * (part_bposition[k]-part_position[k]) + c_2 * np.random.random() * (group_position - part_position[k])
             part_position[k] += part_velocity[k]
+            part_position[k] = np.clip(part_position[k],bounds[:,0],bounds[:,1])
 
 
         i = i + 1
@@ -164,7 +165,7 @@ def particle_swarm(function, bounds, max_iter, max_eval, n_particles = 300, para
     return [obj_class, obj_track, obj_counter_track, timing]
 
 
-def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, tol=1e-50, seed=123):
+def artificial_bee(function, bounds, max_iter, max_eval, n_bees=150, limit=12, tol=1e-50, seed=123):
     """
     This function represents the artifical bee colony opimisation algorithm
     """
@@ -181,7 +182,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, t
     # Helper function for calculating fitness
     def fitness(store, func):
 
-        trial_source = store
+        trial_source = store.copy()
         trial_eval = func(trial_source)
         if trial_eval >= 0:
             trial_fit = 1/(1+trial_eval)
@@ -257,7 +258,7 @@ def artificial_bee(function, bounds, max_iter, max_eval, n_bees=100, limit=12, t
                 counter[bee] = 0
             else:
                 counter[bee] += 1
-
+            
         # Storing the best value so far
         if min(food_eval) < best_eval:
             best_eval = min(food_eval)
@@ -485,7 +486,7 @@ def diff_evolution(function, bounds, max_iter, max_eval, n_pop = 50, crossover=0
     return [obj_class, object_track, obj_counter_track, timing]
 
 
-def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 3, p_chld = 2, eta = 0.2, f_mut = 0.01, sigma = 0.8, tol=1e-50, seed = None):
+def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection = 3, p_chld = 2, eta = 3, f_mut = 0.01, sigma = 0.8, tol=1e-50, seed = None):
     """
     This algorithm implements the genetic algorithm with integer bits
 
@@ -605,7 +606,6 @@ def genetic_alg(function, bounds, max_iter, max_eval, n_pop = 50,  n_selection =
             best_coords = new_pop[best_index]
 
         # Store solution
-        obj_counter += n_pop
         object_track.append(best_eval)
         obj_counter_track.append(obj_counter)
         timing.append(time.time()-time_start)
@@ -655,7 +655,7 @@ def dh_simplex(function, point, bounds, max_iter, c_reflct=1, c_exp= 1.2, c_cont
    
     
     #Parameter initialisation
-    point_coords = np.array([point + np.random.uniform(-0.1,0.1,size=dim)* 0.1*(bounds[:,1]-bounds[:,0]) for _ in range(n_points)])
+    point_coords = np.array([point + np.random.uniform(-0.2,0.2,size=dim)* 0.1*(bounds[:,1]-bounds[:,0]) for _ in range(n_points)])
     point_coords[0] = point
     points_fit = np.apply_along_axis(function,1,point_coords)
     centroid_coor = np.empty(dim)
@@ -718,6 +718,108 @@ def dh_simplex(function, point, bounds, max_iter, c_reflct=1, c_exp= 1.2, c_cont
             break
 
     return (best_eval,best_coords,obj_counter)
+
+# These last two algorithms were not included in the report. Space reduction had seen to fail, cma_es is an initial attempt at the algorithm
+
+def cma_es(function,point, bounds, max_iter, sigma = 0.3, seed=None):
+    """
+    CMA-ES is an algorithm based on statistics and evolution
+    The implementation works on a covariant matrix 
+    sigma is the step size
+    """
+
+    # Storing solution
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
+    timing = list()
+
+    # Initialise parameters for Selection
+    x_mean = np.array([point[k] for k in range(dim)])
+    n_lambda = int(4 + np.floor(3*np.log(dim)))
+    mu = n_lambda/2
+    mu = int(np.floor(mu))
+    weights = np.log(mu+1/2)-np.log(list(range(1,mu+1)))
+    weights = weights/ sum(weights)
+    mueff = np.sum(weights)**2/np.sum(weights**2)
+
+    # Initialise parameters for Adaptation
+    c_time = (4+mueff/dim) / (dim+4 + 2*mueff/dim)
+    c_sigma = (mueff+2) /(dim + mueff + 5)
+    c_learn = 2/ ((dim+1.3)**2+mueff)
+    cmu = min(1-c_learn, 2 * (mueff-2+1/mueff) / ((dim+2)**2 + mueff))
+    damping = 1 + 2*max(0, np.sqrt((mueff-1) / (dim+1))-1) + c_sigma
+
+    # Initialise dynamic parameters
+    pc = np.zeros(dim)
+    ps = np.zeros(dim)
+    B = np.eye(dim) # Matrix
+    D = np.ones(dim)
+    C = B @ np.diag(D**2) @ B.T # Matrix
+    C_inverted = B @ np.diag(D**-1) @ B.T # Matrix
+    eigeneval = 0
+    chiN = dim**0.5*(1-1 /(4*dim) + 1/(21*dim**2))
+
+    time_start = time.time()
+    i = 0
+    while i < max_iter:
+
+        # Generating offspring
+        offspring = np.empty((dim,n_lambda))
+        offspring_eval = np.empty(n_lambda)
+        for j in range(n_lambda):
+            offspring[:,j] = x_mean + sigma * B @ (D * np.random.normal(size=dim))
+            offspring[:,j] = np.clip(offspring[:,j],bounds[:,0],bounds[:,1])
+            offspring_eval[j] = function(offspring[:,j])
+            obj_counter += 1
+        
+
+        # Sort offspring by fitness
+        sort_order = np.argsort(offspring_eval)
+        offspring_eval = offspring_eval[sort_order]
+        x_old = x_mean
+        x_mean = offspring[:,sort_order[:mu]] @ weights
+
+        # Update learning rates for paths of individuals
+        ps = (1-c_sigma)*ps + np.sqrt(c_sigma*(2-c_sigma)*mueff) * C_inverted @ (x_mean-x_old) / sigma
+        penalty = np.linalg.norm(ps) / np.sqrt(1-(1-c_sigma)**(2*obj_counter/n_lambda)) / chiN < 1.4 + 2/ (dim+1)
+        pc = (1-c_time)*pc + penalty * np.sqrt(c_time*(2-c_time)*mueff) * (x_mean-x_old) / sigma
+
+        # Update covariant matrix C
+        x_old_map = np.tile(x_old,(mu,1))
+        x_old_map = x_old_map.T
+        artmp = (1/sigma) * ((offspring[:,sort_order[:mu]]) - x_old_map)
+        term1 = c_learn * (np.outer(pc,pc) + (1-penalty)*c_time* (2-c_time)*C)
+        term2 = cmu * artmp @ np.diag(weights) @ artmp.T
+        C = (1-c_learn-cmu) * C + term1 + term2
+
+        # Alter the step size of sigma
+        sigma *= np.exp((c_sigma/damping)*(np.linalg.norm(ps)/chiN-1))
+
+        # Diagonalisation of C
+        if obj_counter - eigeneval > n_lambda/(c_learn)/dim/10:
+            eigeneval = obj_counter
+            C1 = np.triu(C,1).T
+            C = np.triu(C) + C1
+            (D,B) = np.linalg.eig(C)
+            D = np.sqrt(D)
+            C_inverted = B @ np.diag(D**-1) @ B.T
+
+        if offspring_eval[0] < best_eval:
+            best_eval = offspring_eval[0]
+            best_coords = offspring[:,sort_order[0]]
+        
+        # Store solution
+        object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
+        timing.append(time.time()-time_start)
+        i += 1
+
+    print("done")
+    return best_eval, best_coords, obj_counter
 
 
 def space_reduction(function, bounds, max_iter, max_eval,n_pop = 100, n_glob = 5, f_reduction = 15, tol=1e-50, seed= None):

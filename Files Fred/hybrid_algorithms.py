@@ -3,11 +3,13 @@ import time
 import math as mt
 from ypstruct import structure
 import random
+from numpy.random import default_rng
+from scipy.stats import qmc
 import Alg_conditions as AC
 from Algorithms import *
 
 
-def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection = 3, f_mut = 0.01, tol=1e-80,eta=1, seed = None):
+def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection = 3, f_mut = 0.01, tol=1e-80,eta=3, seed = None):
     """
     Steady State Genetic Algorithm with downhill simplex and DC Replacement method
     SBX crossover and BGA mutation
@@ -16,7 +18,7 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
     def mutation(x,bounds,f_mut=f_mut):
         alpha = np.linspace(0,1,16)
         if np.random.rand() <= f_mut:
-            x += np.random.choice([-1,1])* 0.05*(bounds[:,1]-bounds[:,0])*np.sum([random.choice(alpha)*2**-k for k in range(16)])
+            x += np.random.choice([-1,1])* 0.1*(bounds[:,1]-bounds[:,0])*np.sum([random.choice(alpha)*2**-k for k in range(16)])
             x = np.clip(x,bounds[:,0], bounds[:,1])
             return x
         else:
@@ -55,6 +57,7 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
     # Initialise data
     pop = np.array([bounds[:, 0] + np.random.rand(len(bounds))* (bounds[:, 1] - bounds[:, 0]) for _ in range(n_pop)])
     pop_eval = np.apply_along_axis(function,1,pop)
+    best_eval = min(pop_eval)
     time_start = time.time()
 
     i = 0
@@ -110,13 +113,13 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
                 pop[idx_p1] = c2
                 pop_eval[idx_p1] = eval_c2
         
-        # Perform local search on child if necessary
-        if  eval_c[loc_index] <= min(pop_eval):
-            local_result, local_point,counter = dh_simplex(function,c[loc_index],bounds,100,max_eval,seed=seed)
-            obj_counter += counter
-            pop[loc_index] = local_point
-            pop_eval[loc_index] = local_result
-            best_eval, best_coords = local_result, local_point
+            # Perform local search on child if necessary
+            if  eval_c[loc_index] <= min(pop_eval):
+                local_result, local_point,counter = dh_simplex(function,c[loc_index],bounds,100,max_eval)
+                obj_counter += counter
+                pop[loc_index] = local_point
+                pop_eval[loc_index] = local_result
+                best_eval, best_coords = local_result, local_point
 
         # Mutate worst member of population
         mut_index = np.argmax(pop_eval)
@@ -129,6 +132,7 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
         timing.append(time.time()-time_start)
 
         i += 1
+        print(best_eval)
 
         # Check for convergence or if max feval has been exceeded
         if AC.opt_converge(pop,tol):
@@ -147,14 +151,16 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
     return (obj_class, object_track, obj_counter_track, timing)
 
 
-def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut = 0.01, tol=1e-80, seed=None):
+def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=26, n_mal=26, f_mut = 0.01, tol=1e-80, seed=None):
+
     """
     The mayfly algorithm is a hybrid algorithm derived from PSO, firefly and genetic algorithms
     """
 
+    rng = default_rng(seed)
     # Function for crossover
     def crossover(x1,x2,bounds):
-        L = np.random.random(len(x1))
+        L = rng.random(len(x1))
         off1 = L * x1 + (1-L) * x2
         off2 = L * x2 + (1-L) * x1
         off1 = np.clip(off1,bounds[:,0],bounds[:,1])
@@ -162,12 +168,12 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
         return off1,off2
 
     def mutation(x,bounds,f_mut = f_mut):
-        y = x
+        y = x.copy()
         size_x = len(bounds)
         nmu = int(np.ceil(f_mut*size_x))
         indeces = random.sample(range(size_x),nmu)
         sigma = 0.1 * (bounds[:,1]-bounds[:,0])
-        y[indeces] = x[indeces] + sigma[indeces]*np.random.normal(0,1,size=len(indeces))
+        y[indeces] = x[indeces] + sigma[indeces]*rng.normal(0,1,size=len(indeces))
         y = np.clip(y,bounds[:,0],bounds[:,1])
         return y
 
@@ -190,23 +196,23 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
 
     # Initialise input parameters to Mayfly
     parameters = structure()
-    parameters.weight = 0.8
-    parameters.gdamp = 1
+    parameters.weight = 0.75
+    parameters.gdamp = 0.999
     parameters.pcoeff = 1
-    parameters.g1coeff = 1.5
+    parameters.g1coeff = 1.3
     parameters.g2coeff = 1.5
     parameters.beta = 2
-    parameters.dance = 0.1
-    parameters.rflight = 0.1
-    parameters.dance_damp = 1
-    parameters.rflight_damp = 1
+    parameters.dance = 1.5
+    parameters.rflight = 1.5
+    parameters.dance_damp = 0.99
+    parameters.rflight_damp = 0.99
 
     # Mating parameters
     mating = structure()
     mating.n_children = n_mal
     mating.n_male = n_mal
     mating.n_female = n_fem
-    mating.n_mutant = int(np.round(0.05*n_mal))
+    mating.n_mutant = int(np.round(0.2*n_mal))
     mating.f_mut = f_mut
 
     velo_max = 0.1 * (bounds[:,1]-bounds[:,0])
@@ -219,16 +225,16 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
 
     # Initialise problem parameters
     empty_mayfly = structure()
-    empty_mayfly.Position = []
-    empty_mayfly.Cost = []
-    empty_mayfly.Velo = []
-    empty_mayfly.Best_Position = []
-    empty_mayfly.Best_Cost = []
+    empty_mayfly.Position = np.ndarray
+    empty_mayfly.Cost = np.ndarray
+    empty_mayfly.Velo = np.ndarray
+    empty_mayfly.Best_Position = np.ndarray
+    empty_mayfly.Best_Cost = np.ndarray
 
     male_mayfly = empty_mayfly.deepcopy()
     male_mayfly = male_mayfly.repeat(n_mal)
     for i in range(mating.n_male):
-        male_mayfly[i].Position = bounds[:,0] + np.random.rand(dim)*(bounds[:,1]-bounds[:,0])
+        male_mayfly[i].Position = bounds[:,0] + rng.random(dim)*(bounds[:,1]-bounds[:,0])
         male_mayfly[i].Cost = function(male_mayfly[i].Position)
         male_mayfly[i].Velo = np.zeros(dim)
         male_mayfly[i].Best_Position = male_mayfly[i].Position
@@ -243,7 +249,7 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
     female_mayfly = female_mayfly.repeat(n_fem)
 
     for i in range(mating.n_female):
-        female_mayfly[i].Position = bounds[:,0] + np.random.rand(dim)*(bounds[:,1]-bounds[:,0])
+        female_mayfly[i].Position = bounds[:,0] + rng.random(dim)*(bounds[:,1]-bounds[:,0])
         female_mayfly[i].Cost = function(female_mayfly[i].Position)
         female_mayfly[i].Velo = np.zeros(dim)
         obj_counter += 1
@@ -256,8 +262,8 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
     while i < max_iter:
         # Update female population
         for j in range(mating.n_female):
-            uni = np.random.uniform(-1,1,size=dim)
-            dist = (male_mayfly[j].Position-female_mayfly[j].Position)
+            uni = rng.uniform(-1,1,size=dim)
+            dist = np.sqrt(np.sum(np.square(male_mayfly[j].Position-female_mayfly[j].Position)))
             if female_mayfly[j].Cost > male_mayfly[j].Cost:
                 female_mayfly[j].Velo = parameters.weight * female_mayfly[j].Velo + parameters.g2coeff * np.exp(-parameters.beta*dist**2)*(male_mayfly[j].Position-female_mayfly[j].Position)
             else:
@@ -275,9 +281,9 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
 
         for j in range(mating.n_male):
             # Update males
-            rpbest = (male_mayfly[j].Best_Position - male_mayfly[j].Position)
-            rgbest = (global_best.Position - male_mayfly[j].Position)
-            uni = np.random.uniform(-1,1,size=dim)
+            rpbest = np.sqrt(np.sum(np.square(male_mayfly[j].Best_Position - male_mayfly[j].Position)))
+            rgbest = np.sqrt(np.sum(np.square(global_best.Position - male_mayfly[j].Position)))
+            uni = rng.uniform(-1,1,size=dim)
 
             # Update velocity
             if male_mayfly[j].Cost > global_best.Cost:
@@ -310,37 +316,38 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
 
         # Mate mayflies
         offspring_may = empty_mayfly.deepcopy()
-        offspring_may = offspring_may.repeat(mating.n_children)
-        k = 0
-        for j in range(0,round(mating.n_children/2)):
-            p1 = male_mayfly[j]
-            p2 = female_mayfly[j]
+        offspring_may = offspring_may.repeat(int(2*mating.n_children))
+        h = int(mating.n_children)
+        for k in range(0,mating.n_children):
+            p1 = male_mayfly[k]
+            p2 = female_mayfly[k]
 
             # Crossover operation
-            offspring_may[k].Position, offspring_may[k+1].Position = crossover(p1.Position,p2.Position,bounds)
+            offspring_may[k].Position, offspring_may[h].Position = crossover(p1.Position,p2.Position,bounds)
             offspring_may[k].Cost = function(offspring_may[k].Position)
             obj_counter += 1
             if offspring_may[k].Cost < global_best.Cost:
                 global_best.Cost = offspring_may[k].Cost
                 global_best.Position = offspring_may[k].Position
-            offspring_may[k+1].Cost = function(offspring_may[k+1].Position)
+            offspring_may[h].Cost = function(offspring_may[h].Position)
             obj_counter += 1
-            if offspring_may[k+1].Cost < global_best.Cost:
-                global_best.Cost = offspring_may[k+1].Cost
-                global_best.Position = offspring_may[k+1].Position
+            if offspring_may[h].Cost < global_best.Cost:
+                global_best.Cost = offspring_may[h].Cost
+                global_best.Position = offspring_may[h].Position
             
             offspring_may[k].Best_Position = offspring_may[k].Position
             offspring_may[k].Best_Cost = offspring_may[k].Cost
             offspring_may[k].Velo = np.zeros(dim)
-            offspring_may[k+1].Best_Position = offspring_may[k+1].Position
-            offspring_may[k+1].Best_Cost = offspring_may[k+1].Cost
-            offspring_may[k+1].Velo = np.zeros(dim)
-            k += 2
+            offspring_may[h].Best_Position = offspring_may[h].Position
+            offspring_may[h].Best_Cost = offspring_may[h].Cost
+            offspring_may[h].Velo = np.zeros(dim)
+            h += 1
+
         mutated_may = empty_mayfly.deepcopy()
         mutated_may = mutated_may.repeat(mating.n_mutant)
         for j in range(mating.n_mutant):
             # Select random offspring to be mutated
-            rand_idx = np.random.randint(0,mating.n_children-1)
+            rand_idx = np.random.randint(0,mating.n_children)
             p = offspring_may[rand_idx]
             mutated_may[j].Position = mutation(p.Position,bounds)
             mutated_may[j].Cost = function(mutated_may[j].Position)
@@ -354,13 +361,13 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
             mutated_may[j].Velo = np.zeros(dim)
         
         # Merge populations
-        offspring_may = offspring_may + mutated_may
-        split = round(mating.n_children/2)
-        new_mayflies = offspring_may[:split+1]
+        split1 = round(mating.n_children/2)
+        split2 = round(mating.n_mutant/2)
+        new_mayflies = offspring_may[:split1] + mutated_may[:split2]
         male_mayfly = male_mayfly + new_mayflies
         male_mayfly = sorted(male_mayfly, key= lambda x: x.Cost)
         male_mayfly = male_mayfly[:mating.n_male]
-        new_mayflies = offspring_may[split+1:]
+        new_mayflies = offspring_may[split1:] + mutated_may[:split2]
         female_mayfly = female_mayfly + new_mayflies
         female_mayfly = sorted(female_mayfly, key= lambda x: x.Cost)
         female_mayfly = female_mayfly[:mating.n_female]
@@ -368,7 +375,7 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
         # Apply damping parameters
         parameters.dance *= parameters.dance_damp
         parameters.rflight *= parameters.rflight_damp
-        parameters.pcoeff *= parameters.gdamp
+        parameters.weight *= parameters.gdamp
 
         # Store solution
         object_track.append(global_best.Cost)
@@ -379,7 +386,7 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
         print(global_best.Cost)
 
         # Check for convergence or if max feval has been exceeded
-        pop = np.array([list(male_mayfly[k].Position) for k in range(mating.n_male)])
+        pop = np.array([male_mayfly[k].Cost for k in range(mating.n_male)])
         if AC.opt_converge(pop,tol):
             error = 1
             break
@@ -394,6 +401,144 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=20, n_mal=20, f_mut =
     obj_class.n_feval = obj_counter
     
     return (obj_class, object_track, obj_counter_track, timing)
+
+
+def hybrid_differential(function , bounds, max_iter, max_eval, n_pop=100, repl = 0.85, f_mut = 0.01, tol=1e-80, seed = None):
+    """
+    Differential evolution with Downhill Simplex and BGA mutation
+    """
+    # Mutation BGA function
+    def mutation(x,bounds,f_mut=f_mut):
+        alpha = np.linspace(0,1,16)
+        if np.random.rand() <= f_mut:
+            x += np.random.choice([-1,1])* 0.1*(bounds[:,1]-bounds[:,0])*np.sum([random.choice(alpha)*2**-k for k in range(16)])
+            x = np.clip(x,bounds[:,0], bounds[:,1])
+            return x
+        else:
+            return x
+    
+    # Replacement helper function to handle SSGA replacement
+    def crossover(bounds,pop,uni):
+        new_array = np.array(list(range(len(pop))))
+        np.random.shuffle(new_array)
+        no_1,no_2= new_array[:2]
+        no_3,no_4 = new_array[2:4]
+        off1 = pop[0] + uni*(pop[no_1]-pop[no_2])
+        off2 = pop[0] + uni* (pop[no_3]-pop[no_4])
+        off1,off2 = np.clip(off1,bounds[:,0],bounds[:,1]),np.clip(off2,bounds[:,0],bounds[:,1])
+        return off1,off2
+        
+        
+    # Initialise class 
+    obj_class = AC.opt_solver(len(bounds))
+    obj_class.set_seed(seed)
+    try:
+        int(max_iter + max_eval)
+    except:
+        raise ValueError("Ensure that arguments provided for max. iterations and function evaluations are integers")
+
+    error = 3 # Used to print termination criteria
+
+    # Storing solutions
+    dim = len(bounds)
+    best_coords = np.empty(dim)
+    best_eval = float('inf')
+    object_track = list()
+    obj_counter = 0
+    obj_counter_track = list()
+    timing = list()
     
 
+    # Initialise data
+    sampler = qmc.Halton(d=dim,scramble=False)
+    sample = sampler.random(n=n_pop)
+    pop = np.copy(sample)
+    pop = qmc.scale(pop, bounds[:,0], bounds[:,1])
+    pop_eval = np.apply_along_axis(function,1,pop)
+    time_start = time.time()
 
+    i = 0
+
+    # Start SSGA algorithm
+    while i < max_iter:
+        sort_order = np.argsort(pop_eval)
+        pop_eval = pop_eval[sort_order]
+        pop = pop[sort_order]
+        cross_size = np.random.uniform(0.5,1)
+        best_eval_last = best_eval
+
+        for j in range(int(n_pop)):
+            idx_p1 = j
+            
+            idx_p2 = np.random.randint(0,n_pop)
+            while idx_p2 == idx_p1:
+                idx_p2 = np.random.randint(0,n_pop)
+
+            p1,p2= pop[idx_p1],pop[idx_p2]
+            p_eval1,p_eval2 = pop_eval[idx_p1],pop_eval[idx_p2]
+            
+            # Crossover
+            c1,c2 = crossover(bounds,pop,cross_size)
+
+            # Perform mutation on children
+            c1 = mutation(c1,bounds)
+            c2 = mutation(c2,bounds)
+            
+            # Recombination
+            mu = np.random.uniform(0,1,dim)
+            child1 = np.array([c1[k] if mu[k]<repl else p1[k] for k in range(dim)])
+            child2 = np.array([c2[k] if mu[k]<repl else p2[k] for k in range(dim)])
+            c = [child1,child2]
+
+            # Evaluate children
+            eval_c1,eval_c2 = function(child1),function(child2)
+            eval_c = [eval_c1,eval_c2]
+            loc_index = np.argmin(eval_c)
+
+            obj_counter += 2
+
+            # Select parent to replace
+            if eval_c1 < p_eval1:
+                pop[idx_p1] = child1
+                pop_eval[idx_p1] = eval_c1
+
+            if eval_c2 < p_eval2:
+                pop[idx_p2] = child2
+                pop_eval[idx_p2] = eval_c2
+            
+            if eval_c[loc_index] < best_eval:
+                best_coords= c[loc_index]
+                best_eval = eval_c[loc_index]
+                best_index = loc_index
+            
+        # Perform local search on child if necessary
+        criterium = abs((best_eval-best_eval_last)/best_eval)
+        if  criterium >= 1e-2:
+            local_result, local_point,counter = dh_simplex(function,best_coords,bounds,50)
+            obj_counter += counter
+            if local_result < best_eval:
+                best_eval, best_coords = local_result, local_point
+
+        # Store solution
+        object_track.append(best_eval)
+        obj_counter_track.append(obj_counter)
+        timing.append(time.time()-time_start)
+
+        i += 1
+        print(best_eval)
+
+        # Check for convergence or if max feval has been exceeded
+        if AC.opt_converge(pop,tol):
+            error = 1
+            break
+        elif max_eval <= obj_counter:
+            error = 2
+            break
+
+    obj_class.xarray = best_coords
+    obj_class.set_message(error)
+    obj_class.eval = best_eval
+    obj_class.n_iter = i
+    obj_class.n_feval = obj_counter
+    
+    return (obj_class, object_track, obj_counter_track, timing)
