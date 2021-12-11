@@ -113,13 +113,13 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
                 pop[idx_p1] = c2
                 pop_eval[idx_p1] = eval_c2
         
-            # Perform local search on child if necessary
-            if  eval_c[loc_index] <= min(pop_eval):
-                local_result, local_point,counter = dh_simplex(function,c[loc_index],bounds,100,max_eval)
-                obj_counter += counter
-                pop[loc_index] = local_point
-                pop_eval[loc_index] = local_result
-                best_eval, best_coords = local_result, local_point
+        # Perform local search on child if necessary
+        if  eval_c[loc_index] <= min(pop_eval):
+            local_result, local_point,counter = dh_simplex(function,c[loc_index],bounds,100,max_eval)
+            obj_counter += counter
+            pop[loc_index] = local_point
+            pop_eval[loc_index] = local_result
+            best_eval, best_coords = local_result, local_point
 
         # Mutate worst member of population
         mut_index = np.argmax(pop_eval)
@@ -132,7 +132,6 @@ def hybrid_genetic(function , bounds, max_iter, max_eval, n_pop=50, n_selection 
         timing.append(time.time()-time_start)
 
         i += 1
-        print(best_eval)
 
         # Check for convergence or if max feval has been exceeded
         if AC.opt_converge(pop,tol):
@@ -383,7 +382,6 @@ def mayfly_alg(function, bounds, max_iter, max_eval, n_fem=26, n_mal=26, f_mut =
         timing.append(time.time()-time_start)
 
         i += 1
-        print(global_best.Cost)
 
         # Check for convergence or if max feval has been exceeded
         pop = np.array([male_mayfly[k].Cost for k in range(mating.n_male)])
@@ -525,7 +523,6 @@ def hybrid_differential(function , bounds, max_iter, max_eval, n_pop=100, repl =
         timing.append(time.time()-time_start)
 
         i += 1
-        print(best_eval)
 
         # Check for convergence or if max feval has been exceeded
         if AC.opt_converge(pop,tol):
