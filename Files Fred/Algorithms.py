@@ -719,7 +719,7 @@ def dh_simplex(function, point, bounds, max_iter, c_reflct=1, c_exp= 1.2, c_cont
 
     return (best_eval,best_coords,obj_counter)
 
-# These last two algorithms were not included in the report. Space reduction had seen to fail, cma_es is an initial attempt at the algorithm
+# These last two algorithms were not included in the report. Space reduction was seen to fail, cma_es is an initial attempt at the algorithm
 
 def cma_es(function,point, bounds, max_iter, sigma = 0.3, seed=None):
     """
