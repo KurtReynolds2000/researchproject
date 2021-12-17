@@ -1,8 +1,10 @@
 # researchproject
 Final year research project - Kurt &amp; Fred
 
-Code for Algorithms can be found in:
-Algorithms.py and hybrid_algorithms.py
+All relevant files are located in Final Files
+
+Code for Algorithms can be found in Final Files/Coded_Algorithms:
+Algorithms.py and hybrid_algorithms.py 
 
 The DeepDock model was run from:
 model_algorithms.py
